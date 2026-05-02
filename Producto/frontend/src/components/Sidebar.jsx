@@ -31,7 +31,10 @@ function Sidebar(){
                     </li>
 
                     <li>
-                        <button className="nav-link text-white mb-2">
+                        <button 
+                            className="nav-link text-white mb-2"
+                            onClick={() => navigate("/proyectos")}
+                            >
                             Proyectos
                         </button>
                     </li>
