@@ -5,7 +5,7 @@ from app.db.database import Base, engine
 from app.core.config import APP_NAME
 
 # Crea las tablas en SQLite al iniciar 
-Base.metadata.create_all(bind=engine)
+# Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title=APP_NAME)
 

@@ -13,7 +13,7 @@ class ProyectoCreate(BaseModel):
     presupuesto_estimado: Optional[Decimal] = None
     presupuesto_final: Optional[Decimal] = None
     fecha_termino_maximo: Optional[date] = None
-    PLANTILLA_id_plantilla: Optional[str] = None
+    plantilla_id: Optional[str] = None
 
 class ProyectoUpdate(BaseModel):
     nombre_proyecto: Optional[str] = None
@@ -24,7 +24,7 @@ class ProyectoUpdate(BaseModel):
     presupuesto_estimado: Optional[Decimal] = None
     presupuesto_final: Optional[Decimal] = None
     fecha_termino_maximo: Optional[date] = None
-    PLANTILLA_id_plantilla: Optional[str] = None
+    plantilla_id: Optional[str] = None
 
 class ProyectoOut(BaseModel):
     id_proyecto: str
@@ -36,7 +36,7 @@ class ProyectoOut(BaseModel):
     presupuesto_estimado: Optional[Decimal]
     presupuesto_final: Optional[Decimal]
     fecha_termino_maximo: Optional[date]
-    PLANTILLA_id_plantilla: Optional[str]
+    plantilla_id: Optional[str]
     plantilla: Optional[PlantillaOut] = None
 
     class Config:
