@@ -1,26 +1,19 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
+from typing import List
 from app.db.database import get_db
-from app.models.usuario import Usuario
-import uuid
+from app.schemas.usuario import UsuarioCreate, UsuarioOut
+from app.services.usuario_service import crear_usuario, listar_usuarios
+from app.utils.auth import require_admin
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
-class UsuarioCreate(BaseModel):
-    nombre_usuario: str
-    correo: str
-    password: str
 
-@router.post("/", status_code=201)
-def crear_usuario(data: UsuarioCreate, db: Session = Depends(get_db)):
-    u = Usuario(
-        nombre_usuario=data.nombre_usuario,
-        correo=data.correo,
-        password_hash=data.password,
-        rol="A"
-    )
-    db.add(u)
-    db.commit()
-    db.refresh(u)
-    return {"id_usuario": u.id_usuario, "nombre_usuario": u.nombre_usuario}
+@router.post("/", response_model=UsuarioOut, status_code=201)
+def crear(data: UsuarioCreate, db: Session = Depends(get_db)):
+    return crear_usuario(db, data)
+
+
+@router.get("/", response_model=List[UsuarioOut])
+def listar(db: Session = Depends(get_db), _=Depends(require_admin)):
+    return listar_usuarios(db)
