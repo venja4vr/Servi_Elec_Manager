@@ -17,5 +17,9 @@ def listar_por_proyecto(proyecto_id: str, db: Session = Depends(get_db), _=Depen
     return movimiento_controller.get_by_proyecto(db, proyecto_id)
 
 @router.post("/", response_model=MovimientoOut, status_code=201)
-def registrar(data: MovimientoCreate, db: Session = Depends(get_db), _=Depends(require_admin)):
-    return movimiento_controller.create(db, data)
+def registrar(
+    data: MovimientoCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin)
+):
+    return movimiento_controller.create(db, data, current_user["id_usuario"])
