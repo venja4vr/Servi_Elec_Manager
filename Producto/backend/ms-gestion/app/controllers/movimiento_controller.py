@@ -8,5 +8,5 @@ def get_all(db: Session):
 def get_by_proyecto(db: Session, proyecto_id: str):
     return movimiento_service.listar_por_proyecto(db, proyecto_id)
 
-def create(db: Session, data: MovimientoCreate):
-    return movimiento_service.registrar_movimiento(db, data)
+def create(db: Session, data: MovimientoCreate, usuario_id: str):
+    return movimiento_service.registrar_movimiento(db, data, usuario_id)
