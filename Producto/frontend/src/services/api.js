@@ -2,7 +2,7 @@
 const API_URL = "http://localhost:8000";
 
 // Función helper para hacer peticiones autenticadas
-async function fetchAPI(endpoint, options = {}) {
+export async function fetchAPI(endpoint, options = {}) {
     const token = localStorage.getItem("token");
     
     const headers = {

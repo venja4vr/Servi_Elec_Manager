@@ -3,11 +3,11 @@ import Home from "../pages/Home";
 import Register from "../pages/Register";
 import Login from "../pages/Login";
 import Proyectos from "../pages/Proyectos";
-// import DetalleProyecto from "../pages/DetalleProyecto";  // pendiente a hans
+import DetalleProyecto from "../pages/DetalleProyecto";
 import Buscador from "../pages/Buscador";
 import RecursosPendientes from "../pages/RecursosPendientes";
-// import Inventario from "../pages/Inventario";            
-// import AgregarProducto from "../pages/AgregarProducto";  
+import Inventario from "../pages/Inventario";
+import AgregarProducto from "../pages/AgregarProducto";
 import ProtectedRoute from "./ProtectedRoute";
 
 function AppRoutes() {
@@ -35,7 +35,6 @@ function AppRoutes() {
                         </ProtectedRoute>
                     }
                 />
-                {/* Pendientes de Hans:
                 <Route
                     path="/proyectos/:id"
                     element={
@@ -44,7 +43,6 @@ function AppRoutes() {
                         </ProtectedRoute>
                     }
                 />
-                */}
                 <Route
                     path="/buscador"
                     element={
@@ -61,7 +59,6 @@ function AppRoutes() {
                         </ProtectedRoute>
                     }
                 />
-                {/* Pendientes de Hans:
                 <Route
                     path="/inventario"
                     element={
@@ -78,7 +75,6 @@ function AppRoutes() {
                         </ProtectedRoute>
                     }
                 />
-                */}
             </Routes>
         </BrowserRouter>
     );
