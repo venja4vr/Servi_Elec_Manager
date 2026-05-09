@@ -1,45 +1,47 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
 
 const Proyectos = () => {
-    const [tabActivo, setTabActivo] = useState("pendientes");
+  const [tabActivo, setTabActivo] = useState("pendientes");
+  const navigate = useNavigate();
 
-    return (
-      <AppLayout>
-        <div className="container-fluid">
-            {/* Título */}
-            <h2 className="mb-4">Proyectos</h2>
+  return (
+    <AppLayout>
+      <div className="container-fluid">
+        {/* Título */}
+        <h2 className="mb-4">Proyectos</h2>
 
-            {/* Tabs */}
-            <div className="d-flex gap-2 mb-3">
-            <button
-                className={`btn ${tabActivo === "pendientes" ? "btn-primary" : "btn-outline-secondary"}`}
-                onClick={() => setTabActivo("pendientes")}
-            >
-                Pendientes
-            </button>
+        {/* Tabs */}
+        <div className="d-flex gap-2 mb-3">
+        <button
+          className={`btn ${tabActivo === "pendientes" ? "btn-primary" : "btn-outline-secondary"}`}
+          onClick={() => setTabActivo("pendientes")}
+        >
+          Pendientes
+        </button>
 
-            <button
-                className={`btn ${tabActivo === "enCurso" ? "btn-primary" : "btn-outline-secondary"}`}
-                onClick={() => setTabActivo("enCurso")}
-            >
-                En curso
-            </button>
+        <button
+          className={`btn ${tabActivo === "enCurso" ? "btn-primary" : "btn-outline-secondary"}`}
+          onClick={() => setTabActivo("enCurso")}
+        >
+          En curso
+        </button>
 
-            <button
-                className={`btn ${tabActivo === "finalizado" ? "btn-primary" : "btn-outline-secondary"}`}
-                onClick={() => setTabActivo("finalizado")}
-            >
-                Finalizado
-            </button>
+        <button
+          className={`btn ${tabActivo === "finalizado" ? "btn-primary" : "btn-outline-secondary"}`}
+          onClick={() => setTabActivo("finalizado")}
+        >
+          Finalizado
+        </button>
 
-            <button
-                className={`btn ${tabActivo === "cancelado" ? "btn-primary" : "btn-outline-secondary"}`}
-                onClick={() => setTabActivo("cancelado")}
-            >
-                Cancelado
-            </button>
-        </div>
+        <button
+          className={`btn ${tabActivo === "cancelado" ? "btn-primary" : "btn-outline-secondary"}`}
+          onClick={() => setTabActivo("cancelado")}
+        >
+          Cancelado
+        </button>
+      </div>
 
       {/* Filtros */}
       <div className="row mb-4">
@@ -79,7 +81,11 @@ const Proyectos = () => {
 
             {/* DERECHA */}
             <div className="col-md-3 d-flex flex-column gap-2">
-              <button className="btn btn-dark">Ver detalle</button>
+              <button className="btn btn-dark"
+              onClick={() => navigate('/proyectos/${item}')}
+              >
+                Ver detalle
+              </button>
 
               {tabActivo === "pendientes" && (
                 <>

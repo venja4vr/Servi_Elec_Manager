@@ -40,7 +40,15 @@ function Sidebar(){
                             >
                             Proyectos
                         </button>
+
+                        <button
+                            className="nav-link text-white mb-2"
+                            onClick={() => navigate("/inventario")}
+                        >
+                            Invetario
+                        </button>
                     </li>
+
             </ul>
 
 
