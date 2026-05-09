@@ -64,3 +64,16 @@ export async function getCategorias() {
 export async function getMateriales() {
     return fetchAPI("/materiales/");
 }
+
+// =============== BUSCADOR DE PRECIOS ===============
+
+export async function buscarPrecios(query = "", tienda = "") {
+    const params = new URLSearchParams();
+    if (query) params.append("query", query);
+    if (tienda) params.append("tienda", tienda);
+    
+    const queryString = params.toString();
+    const endpoint = queryString ? `/buscador/?${queryString}` : "/buscador/";
+    
+    return fetchAPI(endpoint);
+}
