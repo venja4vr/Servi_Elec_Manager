@@ -1,25 +1,46 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import AuthLayout from "../components/AuthLayout" 
+import AuthLayout from "../components/AuthLayout";
+import { login } from "../services/api";
 
-function Login(){
+function Login() {
     const navigate = useNavigate();
+    const [correo, setCorreo] = useState(""); //useState son estados de react para guardar lo que el usuario escribe en el formulario
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
+    const [cargando, setCargando] = useState(false);
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        navigate("/home");
-    }
+        setError("");
+        setCargando(true);
 
-    return(
+        try {
+            await login(correo, password);
+            navigate("/home");
+        } catch (err) {
+            setError(err.message || "Error al iniciar sesión");
+        } finally {
+            setCargando(false);
+        }
+    };
+
+    return (
         <AuthLayout>
-            <div className="card shadow-sm rounded-4 p-4" style={{width: "420px"}}>
+            <div className="card shadow-sm rounded-4 p-4" style={{ width: "420px" }}>
                 <div className="text-center mb-4">
                     <h1 className="fw-bold">ServiElec Manager</h1>
                     <p className="text-muted mb-0">
                         Sistema de gestión de servicios eléctricos
                     </p>
                 </div>
+                <h2 className="h4 text-center mb-3">Iniciar sesión</h2>
 
-                <h2 className="h4 text-center mb-3">Iniciar sesion</h2>
+                {error && (
+                    <div className="alert alert-danger" role="alert">
+                        {error}
+                    </div>
+                )}
 
                 <form onSubmit={handleLogin}>
                     <div className="mb-3">
@@ -28,36 +49,43 @@ function Login(){
                             type="email"
                             className="form-control"
                             placeholder="ejemplo@correo.com"
+                            value={correo}
+                            onChange={(e) => setCorreo(e.target.value)}
+                            required
                         />
                     </div>
-
                     <div className="mb-4">
                         <label className="form-label">Contraseña</label>
                         <input
-                        type="password"
-                        className="form-control"
-                        placeholder="Ingresa tu contraseña"
+                            type="password"
+                            className="form-control"
+                            placeholder="Ingresa tu contraseña"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
                         />
                     </div>
-
-                    <button type="submit" className="btn btn-primary w-100">
-                        Ingresar
+                    <button
+                        type="submit"
+                        className="btn btn-primary w-100"
+                        disabled={cargando}
+                    >
+                        {cargando ? "Ingresando..." : "Ingresar"}
                     </button>
                 </form>
-
                 <div className="text-center mt-4">
                     <p className="text-muted mb-1">¿No tienes cuenta?</p>
                     <button
-                    type="button"
-                    className="btn btn-link"
-                    onClick={() => navigate("/register")}
+                        type="button"
+                        className="btn btn-link"
+                        onClick={() => navigate("/register")}
                     >
                         Crear cuenta
                     </button>
                 </div>
             </div>
         </AuthLayout>
-    )
+    );
 }
 
 export default Login;
