@@ -92,6 +92,26 @@ CREATE TABLE proyecto (
         ON UPDATE CASCADE
 );
 
+-- Tabla PROYECTO_MATERIAL (NUEVA: planificación de materiales)
+-- Guarda qué materiales planea usar un proyecto, antes de que se ejecute.
+-- Cuando el proyecto pasa a "en_curso", estos planes se convierten en movimientos reales.
+CREATE TABLE proyecto_material (
+    proyecto_id        VARCHAR(20)   NOT NULL,
+    material_id        VARCHAR(20)   NOT NULL,
+    cantidad_planeada  NUMERIC(9, 2) NOT NULL CHECK (cantidad_planeada > 0),
+    PRIMARY KEY (proyecto_id, material_id),
+    CONSTRAINT fk_pm_proy_proyecto
+        FOREIGN KEY (proyecto_id)
+        REFERENCES proyecto (id_proyecto)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+    CONSTRAINT fk_pm_proy_material
+        FOREIGN KEY (material_id)
+        REFERENCES material (id_material)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+);
+
 -- Tabla MOVIMIENTO
 CREATE TABLE movimiento (
     id_movimiento  VARCHAR(100)  PRIMARY KEY,

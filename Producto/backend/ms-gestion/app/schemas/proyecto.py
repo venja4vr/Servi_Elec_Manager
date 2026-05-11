@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 from decimal import Decimal
 from datetime import date
 from app.schemas.plantilla import PlantillaOut
@@ -50,3 +50,17 @@ class ProyectoOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# Schema para crear proyecto CON sus materiales planeados
+class ProyectoCreateConMateriales(BaseModel):
+    nombre_proyecto: str
+    tipo_proyecto: Optional[str] = None
+    nombre_cliente: str
+    telefono_cliente: Optional[str] = None
+    direccion_cliente: Optional[str] = None
+    fecha_inicio: Optional[date] = None
+    presupuesto_estimado: Optional[Decimal] = None
+    fecha_termino_maximo: Optional[date] = None
+    plantilla_id: Optional[str] = None
+    materiales: List[dict]  # [{"material_id": "...", "cantidad_planeada": 5}, ...]
