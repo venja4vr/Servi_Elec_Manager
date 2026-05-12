@@ -9,6 +9,7 @@ import RecursosPendientes from "../pages/RecursosPendientes";
 import Inventario from "../pages/Inventario";
 import AgregarProducto from "../pages/AgregarProducto";
 import ProtectedRoute from "./ProtectedRoute";
+import NuevoProyecto from "../pages/NuevoProyecto";
 
 function AppRoutes() {
     return (
@@ -32,6 +33,14 @@ function AppRoutes() {
                     element={
                         <ProtectedRoute>
                             <Proyectos />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/proyectos/nuevo"
+                    element={
+                        <ProtectedRoute>
+                         <NuevoProyecto />
                         </ProtectedRoute>
                     }
                 />
