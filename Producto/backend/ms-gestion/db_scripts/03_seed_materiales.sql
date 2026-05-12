@@ -6,21 +6,21 @@
 INSERT INTO material (id_material, nombre_material, descripcion, stock_actual, stock_critico, precio_unitario, categoria_id) VALUES
 
 -- ---------- CONDUCTORES ----------
-('MAT-CABLE-25-V', 'Cable THHN 2.5mm² 100m Verde',
- 'Cable de cobre flexible para tendido en canalización. Ideal para fase, neutro o tierra según código de color.',
- 8, 3, 38940, 'CAT-CONDUCTORES'),
+('MAT-CABLE-25-V', 'Cable THHN 2.5mm² Verde (por metro)',
+ 'Cable de cobre flexible 2.5mm². Precio por metro. Ideal para fase, neutro o tierra según código de color.',
+ 800, 150, 390, 'CAT-CONDUCTORES'),
 
-('MAT-CABLE-15-R', 'Cable THHN 1.5mm² 100m Rojo',
- 'Cable de cobre flexible 1.5mm². Recomendado para circuitos de iluminación residencial.',
- 5, 2, 19990, 'CAT-CONDUCTORES'),
+('MAT-CABLE-15-R', 'Cable THHN 1.5mm² Rojo (por metro)',
+ 'Cable de cobre flexible 1.5mm². Precio por metro. Recomendado para circuitos de iluminación residencial.',
+ 500, 100, 200, 'CAT-CONDUCTORES'),
 
-('MAT-CABLE-6-N', 'Cable THHN 6mm² 100m Negro',
- 'Cable para alimentadores principales y circuitos de fuerza. Calibre robusto para cargas medianas.',
- 3, 1, 89990, 'CAT-CONDUCTORES'),
+('MAT-CABLE-6-N', 'Cable THHN 6mm² Negro (por metro)',
+ 'Cable de cobre 6mm². Precio por metro. Para alimentadores principales y circuitos de fuerza.',
+ 300, 50, 900, 'CAT-CONDUCTORES'),
 
-('MAT-CABLE-10-N', 'Cable THHN 10mm² 100m Negro',
- 'Cable para alimentadores trifásicos en instalaciones industriales o comerciales.',
- 2, 1, 179990, 'CAT-CONDUCTORES'),
+('MAT-CABLE-10-N', 'Cable THHN 10mm² Negro (por metro)',
+ 'Cable de cobre 10mm². Precio por metro. Para alimentadores trifásicos industriales o comerciales.',
+ 200, 40, 1800, 'CAT-CONDUCTORES'),
 
 -- ---------- PROTECCIONES ----------
 ('MAT-DISY-16A', 'Disyuntor Termomagnético 16A Curva C',
