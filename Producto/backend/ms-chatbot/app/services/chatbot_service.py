@@ -62,9 +62,18 @@ def _menu_servicios(plantillas: list, categoria: str) -> Tuple[str, dict]:
     # Retorna el texto del menú Y un mapa {numero: plantilla}
     # El mapa se guarda en la sesión para saber qué eligió el cliente
     palabras_clave = {
-        "Instalaciones Eléctricas": ["instalac", "tablero", "tomacorriente", "generador", "interruptor"],
-        "Mantenciones Eléctricas":  ["mantenc", "revision", "inspecc", "cambio"],
-        "Servicios Industriales":   ["industrial", "maquinaria", "trifasico"],
+        "Instalaciones Eléctricas": [
+            "instalac", "tablero", "tomacorriente",
+            "generador", "interruptor", "cambio de"
+        ],
+        "Mantenciones Eléctricas": [
+            "mantenc", "reparac", "diagnos",
+            "cortocircuito", "revision", "inspecc"
+        ],
+        "Servicios Industriales": [
+            "industrial", "maquinaria", "trifasico",
+            "trifásico", "configurac", "sistema energ"
+        ],
     }
 
     claves = palabras_clave.get(categoria, [])
