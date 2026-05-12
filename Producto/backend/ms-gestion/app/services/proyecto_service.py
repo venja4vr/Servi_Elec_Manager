@@ -92,9 +92,9 @@ def actualizar_proyecto(db: Session, proyecto_id: str, data: ProyectoUpdate):
 def cambiar_estado(db: Session, proyecto_id: str, nuevo_estado: str, usuario_id: str):
     """
     Cambia el estado del proyecto y ejecuta la lógica asociada:
-    - pendiente → en_curso: descuenta el stock de los materiales planeados (crea movimientos).
+    - pendiente → en_curso: VALIDA stock primero. Si falta, rechaza. Si OK, descuenta.
     - en_curso → cancelado: devuelve el stock al inventario.
-    - en_curso → finalizado: simplemente cambia el estado (los movimientos ya están registrados).
+    - en_curso → finalizado: simplemente cambia el estado.
     """
     estados_validos = ["pendiente", "en_curso", "finalizado", "cancelado"]
     if nuevo_estado not in estados_validos:
@@ -106,8 +106,9 @@ def cambiar_estado(db: Session, proyecto_id: str, nuevo_estado: str, usuario_id:
     p = obtener_proyecto(db, proyecto_id)
     estado_actual = p.estado
 
-    # Transición: pendiente → en_curso
+    # Transición: pendiente → en_curso (validar stock primero)
     if estado_actual == "pendiente" and nuevo_estado == "en_curso":
+        _validar_stock_disponible(db, p)
         _ejecutar_descuento_stock(db, p, usuario_id)
 
     # Transición: en_curso → cancelado (devolver stock)
@@ -118,6 +119,48 @@ def cambiar_estado(db: Session, proyecto_id: str, nuevo_estado: str, usuario_id:
     db.commit()
     db.refresh(p)
     return p
+
+
+def _validar_stock_disponible(db: Session, proyecto: Proyecto):
+    """
+    Verifica que TODOS los materiales planeados tengan stock suficiente.
+    Si falta aunque sea uno, lanza un error 400 con detalle estructurado para que
+    el frontend pueda mostrar los materiales faltantes con sus cantidades.
+    """
+    materiales_planeados = (
+        db.query(ProyectoMaterial)
+        .filter(ProyectoMaterial.proyecto_id == proyecto.id_proyecto)
+        .all()
+    )
+
+    faltantes = []
+    for pm in materiales_planeados:
+        material = db.query(Material).filter(Material.id_material == pm.material_id).first()
+        if not material:
+            continue
+
+        cantidad_planeada = int(pm.cantidad_planeada)
+        if material.stock_actual < cantidad_planeada:
+            faltan = cantidad_planeada - material.stock_actual
+            faltantes.append({
+                "material_id": material.id_material,
+                "nombre": material.nombre_material,
+                "planeado": cantidad_planeada,
+                "disponible": material.stock_actual,
+                "faltan": faltan,
+            })
+
+    if faltantes:
+        # Mensaje legible + lista estructurada
+        nombres = ", ".join([f"{f['nombre']} (faltan {f['faltan']})" for f in faltantes])
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "mensaje": "Stock insuficiente para aceptar el proyecto",
+                "resumen": nombres,
+                "faltantes": faltantes,
+            }
+        )
 
 
 def _ejecutar_descuento_stock(db: Session, proyecto: Proyecto, usuario_id: str):

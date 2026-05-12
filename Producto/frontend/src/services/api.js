@@ -17,9 +17,19 @@ export async function fetchAPI(endpoint, options = {}) {
     });
 
     if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: "Error desconocido" }));
-        throw new Error(error.detail || `Error ${response.status}`);
+    const error = await response.json().catch(() => ({ detail: "Error desconocido" }));
+    const detail = error.detail;
+
+    // Si el detail es un objeto estructurado, le adjuntamos sus campos al Error
+    if (typeof detail === "object" && detail !== null) {
+        const err = new Error(detail.mensaje || detail.resumen || "Error en la operación");
+        err.faltantes = detail.faltantes;
+        err.detalleCompleto = detail;
+        throw err;
     }
+
+    throw new Error(detail || `Error ${response.status}`);
+}
 
     return response.json();
 }
@@ -191,4 +201,12 @@ export async function crearProyectoConMateriales(data) {
 
 export async function getMaterialesPlaneadosDeProyecto(proyectoId) {
     return fetchAPI(`/proyectos/${proyectoId}/materiales`);
+}
+
+// =============== AJUSTAR STOCK (suma o resta) ===============
+
+export async function ajustarStockMaterial(materialId, cantidad) {
+    return fetchAPI(`/materiales/${materialId}/stock?cantidad=${cantidad}`, {
+        method: "PATCH",
+    });
 }

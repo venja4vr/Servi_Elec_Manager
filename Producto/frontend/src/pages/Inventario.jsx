@@ -1,7 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
-import { getMateriales, getCategorias } from "../services/api";
+import {
+    getMateriales,
+    getCategorias,
+    actualizarMaterial,
+    eliminarMaterial,
+} from "../services/api";
 
 function Inventario() {
     const navigate = useNavigate();
@@ -10,6 +15,15 @@ function Inventario() {
     const [busqueda, setBusqueda] = useState("");
     const [cargando, setCargando] = useState(false);
     const [error, setError] = useState("");
+    const [mensajeOk, setMensajeOk] = useState("");
+
+    // Modal de edición
+    const [mostrarEditar, setMostrarEditar] = useState(false);
+    const [materialEditando, setMaterialEditando] = useState(null);
+
+    // Modal de eliminación
+    const [mostrarEliminar, setMostrarEliminar] = useState(false);
+    const [materialAEliminar, setMaterialAEliminar] = useState(null);
 
     useEffect(() => {
         cargarDatos();
@@ -61,6 +75,59 @@ function Inventario() {
         return "bg-success";
     };
 
+    // EDITAR
+    const abrirEditar = (material) => {
+        setMaterialEditando({ ...material });
+        setMostrarEditar(true);
+    };
+
+    const handleCambioCampo = (campo, valor) => {
+        setMaterialEditando((prev) => ({ ...prev, [campo]: valor }));
+    };
+
+    const confirmarEditar = async () => {
+        setError("");
+        try {
+            const payload = {
+                nombre_material: materialEditando.nombre_material,
+                descripcion: materialEditando.descripcion || null,
+                stock_actual: Number(materialEditando.stock_actual),
+                stock_critico: Number(materialEditando.stock_critico),
+                precio_unitario: Number(materialEditando.precio_unitario),
+                categoria_id: materialEditando.categoria_id,
+            };
+            await actualizarMaterial(materialEditando.id_material, payload);
+            setMostrarEditar(false);
+            setMaterialEditando(null);
+            setMensajeOk("Material actualizado correctamente.");
+            setTimeout(() => setMensajeOk(""), 3000);
+            await cargarDatos();
+        } catch (err) {
+            setError(err.message || "Error al actualizar material");
+        }
+    };
+
+    // ELIMINAR
+    const abrirEliminar = (material) => {
+        setMaterialAEliminar(material);
+        setMostrarEliminar(true);
+    };
+
+    const confirmarEliminar = async () => {
+        setError("");
+        try {
+            await eliminarMaterial(materialAEliminar.id_material);
+            setMostrarEliminar(false);
+            setMaterialAEliminar(null);
+            setMensajeOk("Material eliminado correctamente.");
+            setTimeout(() => setMensajeOk(""), 3000);
+            await cargarDatos();
+        } catch (err) {
+            setError(err.message || "Error al eliminar material");
+            setMostrarEliminar(false);
+        }
+    };
+
     return (
         <AppLayout>
             <div className="container-fluid">
@@ -72,12 +139,21 @@ function Inventario() {
                         </p>
                     </div>
 
-                    <button
-                        className="btn btn-success px-4"
-                        onClick={() => navigate("/agregar-producto")}
-                    >
-                        Agregar recurso
-                    </button>
+                    <div className="d-flex gap-2">
+                        <button
+                            className="btn btn-outline-primary px-3"
+                            onClick={() => navigate("/buscador")}
+                            title="Buscar productos en tiendas y agregarlos a recursos pendientes"
+                        >
+                            Comprar más en tiendas
+                        </button>
+                        <button
+                            className="btn btn-success px-4"
+                            onClick={() => navigate("/agregar-producto")}
+                        >
+                            Agregar recurso
+                        </button>
+                    </div>
                 </div>
 
                 <div className="row align-items-center mb-4">
@@ -95,6 +171,11 @@ function Inventario() {
                 {error && (
                     <div className="alert alert-danger" role="alert">
                         {error}
+                    </div>
+                )}
+                {mensajeOk && (
+                    <div className="alert alert-success" role="alert">
+                        {mensajeOk}
                     </div>
                 )}
 
@@ -160,10 +241,16 @@ function Inventario() {
                                             </td>
                                             <td className="text-center">
                                                 <div className="d-flex gap-2 justify-content-center">
-                                                    <button className="btn btn-primary btn-sm">
+                                                    <button
+                                                        className="btn btn-primary btn-sm"
+                                                        onClick={() => abrirEditar(material)}
+                                                    >
                                                         Editar
                                                     </button>
-                                                    <button className="btn btn-danger btn-sm">
+                                                    <button
+                                                        className="btn btn-danger btn-sm"
+                                                        onClick={() => abrirEliminar(material)}
+                                                    >
                                                         Eliminar
                                                     </button>
                                                 </div>
@@ -175,6 +262,171 @@ function Inventario() {
                         </table>
                     </div>
                 </div>
+
+                {/* MODAL EDITAR */}
+                {mostrarEditar && materialEditando && (
+                    <div
+                        className="modal show d-block"
+                        tabIndex="-1"
+                        style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+                    >
+                        <div className="modal-dialog modal-dialog-centered modal-lg">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h5 className="modal-title">Editar material</h5>
+                                    <button
+                                        type="button"
+                                        className="btn-close"
+                                        onClick={() => setMostrarEditar(false)}
+                                    ></button>
+                                </div>
+                                <div className="modal-body">
+                                    <div className="row g-3">
+                                        <div className="col-md-6">
+                                            <label className="form-label">Nombre *</label>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                value={materialEditando.nombre_material || ""}
+                                                onChange={(e) =>
+                                                    handleCambioCampo("nombre_material", e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div className="col-md-6">
+                                            <label className="form-label">Categoría *</label>
+                                            <select
+                                                className="form-select"
+                                                value={materialEditando.categoria_id || ""}
+                                                onChange={(e) =>
+                                                    handleCambioCampo("categoria_id", e.target.value)
+                                                }
+                                            >
+                                                {categorias.map((c) => (
+                                                    <option key={c.id_categoria} value={c.id_categoria}>
+                                                        {c.nombre_categoria}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="col-md-4">
+                                            <label className="form-label">Precio (CLP) *</label>
+                                            <input
+                                                type="number"
+                                                className="form-control"
+                                                min="0"
+                                                value={materialEditando.precio_unitario || 0}
+                                                onChange={(e) =>
+                                                    handleCambioCampo("precio_unitario", e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div className="col-md-4">
+                                            <label className="form-label">Stock actual *</label>
+                                            <input
+                                                type="number"
+                                                className="form-control"
+                                                min="0"
+                                                value={materialEditando.stock_actual || 0}
+                                                onChange={(e) =>
+                                                    handleCambioCampo("stock_actual", e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div className="col-md-4">
+                                            <label className="form-label">Stock crítico *</label>
+                                            <input
+                                                type="number"
+                                                className="form-control"
+                                                min="0"
+                                                value={materialEditando.stock_critico || 0}
+                                                onChange={(e) =>
+                                                    handleCambioCampo("stock_critico", e.target.value)
+                                                }
+                                            />
+                                        </div>
+                                        <div className="col-md-12">
+                                            <label className="form-label">Descripción</label>
+                                            <textarea
+                                                className="form-control"
+                                                rows="3"
+                                                value={materialEditando.descripcion || ""}
+                                                onChange={(e) =>
+                                                    handleCambioCampo("descripcion", e.target.value)
+                                                }
+                                            ></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="modal-footer">
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline-secondary"
+                                        onClick={() => setMostrarEditar(false)}
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary"
+                                        onClick={confirmarEditar}
+                                    >
+                                        Guardar cambios
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* MODAL ELIMINAR */}
+                {mostrarEliminar && materialAEliminar && (
+                    <div
+                        className="modal show d-block"
+                        tabIndex="-1"
+                        style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+                    >
+                        <div className="modal-dialog modal-dialog-centered">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h5 className="modal-title text-danger">Confirmar eliminación</h5>
+                                    <button
+                                        type="button"
+                                        className="btn-close"
+                                        onClick={() => setMostrarEliminar(false)}
+                                    ></button>
+                                </div>
+                                <div className="modal-body">
+                                    <p>
+                                        ¿Estás seguro de eliminar el material{" "}
+                                        <strong>{materialAEliminar.nombre_material}</strong>?
+                                    </p>
+                                    <p className="text-muted small mb-0">
+                                        Esta acción no se puede deshacer. Si el material está vinculado a
+                                        proyectos o plantillas, la eliminación puede ser rechazada por el
+                                        sistema.
+                                    </p>
+                                </div>
+                                <div className="modal-footer">
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline-secondary"
+                                        onClick={() => setMostrarEliminar(false)}
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-danger"
+                                        onClick={confirmarEliminar}
+                                    >
+                                        Sí, eliminar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </AppLayout>
     );

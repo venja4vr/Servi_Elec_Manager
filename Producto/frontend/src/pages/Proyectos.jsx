@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
 import { getProyectos, cambiarEstadoProyecto } from "../services/api";
 
-// Mapa de tabs del front (Hans) a estados del backend
+// Mapa de tabs del front a estados del backend
 const TABS = {
     pendientes: "pendiente",
     enCurso: "en_curso",
@@ -18,6 +18,11 @@ function Proyectos() {
     const [busqueda, setBusqueda] = useState("");
     const [cargando, setCargando] = useState(false);
     const [error, setError] = useState("");
+
+    // Modal de stock insuficiente
+    const [mostrarStockInsuficiente, setMostrarStockInsuficiente] = useState(false);
+    const [faltantesStock, setFaltantesStock] = useState([]);
+    const [proyectoConFalta, setProyectoConFalta] = useState(null);
 
     useEffect(() => {
         cargarProyectos();
@@ -37,13 +42,46 @@ function Proyectos() {
         }
     };
 
-    const handleCambiarEstado = async (proyectoId, nuevoEstado) => {
+    const handleCambiarEstado = async (proyecto, nuevoEstado) => {
         try {
-            await cambiarEstadoProyecto(proyectoId, nuevoEstado);
+            await cambiarEstadoProyecto(proyecto.id_proyecto, nuevoEstado);
             await cargarProyectos();
         } catch (err) {
-            setError(err.message || "Error al cambiar el estado del proyecto");
+            // Detectar si el error es de stock insuficiente (detail estructurado)
+            let detail = null;
+            try {
+                detail = typeof err.message === "string" ? JSON.parse(err.message) : err.message;
+            } catch {
+                detail = null;
+            }
+
+            // El backend envía detail.detail.faltantes; nuestro fetchAPI ya extrae detail,
+            // así que err.message puede ser el JSON string del objeto o el resumen string
+            if (err.message && err.message.includes("Stock insuficiente")) {
+                // Hay que parsear desde err.message si es JSON, o pedir al backend
+                await mostrarFaltantesDesdeError(err, proyecto);
+            } else if (typeof err === "object" && err.faltantes) {
+                setFaltantesStock(err.faltantes);
+                setProyectoConFalta(proyecto);
+                setMostrarStockInsuficiente(true);
+            } else {
+                setError(err.message || "Error al cambiar el estado del proyecto");
+            }
         }
+    };
+
+    // Helper para parsear el error de stock insuficiente desde el mensaje del backend
+    const mostrarFaltantesDesdeError = async (err, proyecto) => {
+        // Intentar obtener faltantes desde err.faltantes directamente
+        if (err.faltantes && Array.isArray(err.faltantes)) {
+            setFaltantesStock(err.faltantes);
+            setProyectoConFalta(proyecto);
+            setMostrarStockInsuficiente(true);
+            return;
+        }
+
+        // Si no, mostrar mensaje genérico
+        setError(err.message || "Stock insuficiente para aceptar el proyecto");
     };
 
     const formatearPrecio = (precio) => {
@@ -182,17 +220,13 @@ function Proyectos() {
                                         <>
                                             <button
                                                 className="btn btn-primary"
-                                                onClick={() =>
-                                                    handleCambiarEstado(proyecto.id_proyecto, "en_curso")
-                                                }
+                                                onClick={() => handleCambiarEstado(proyecto, "en_curso")}
                                             >
                                                 Aceptar
                                             </button>
                                             <button
                                                 className="btn btn-outline-danger"
-                                                onClick={() =>
-                                                    handleCambiarEstado(proyecto.id_proyecto, "cancelado")
-                                                }
+                                                onClick={() => handleCambiarEstado(proyecto, "cancelado")}
                                             >
                                                 Rechazar
                                             </button>
@@ -203,17 +237,13 @@ function Proyectos() {
                                         <>
                                             <button
                                                 className="btn btn-success"
-                                                onClick={() =>
-                                                    handleCambiarEstado(proyecto.id_proyecto, "finalizado")
-                                                }
+                                                onClick={() => handleCambiarEstado(proyecto, "finalizado")}
                                             >
                                                 Finalizar
                                             </button>
                                             <button
                                                 className="btn btn-outline-danger"
-                                                onClick={() =>
-                                                    handleCambiarEstado(proyecto.id_proyecto, "cancelado")
-                                                }
+                                                onClick={() => handleCambiarEstado(proyecto, "cancelado")}
                                             >
                                                 Cancelar
                                             </button>
@@ -229,9 +259,7 @@ function Proyectos() {
                                     {tabActivo === "cancelado" && (
                                         <button
                                             className="btn btn-outline-primary"
-                                            onClick={() =>
-                                                handleCambiarEstado(proyecto.id_proyecto, "pendiente")
-                                            }
+                                            onClick={() => handleCambiarEstado(proyecto, "pendiente")}
                                         >
                                             Reactivar
                                         </button>
@@ -240,6 +268,81 @@ function Proyectos() {
                             </div>
                         </div>
                     ))
+                )}
+
+                {/* MODAL STOCK INSUFICIENTE */}
+                {mostrarStockInsuficiente && (
+                    <div
+                        className="modal show d-block"
+                        tabIndex="-1"
+                        style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+                    >
+                        <div className="modal-dialog modal-dialog-centered modal-lg">
+                            <div className="modal-content">
+                                <div className="modal-header bg-warning">
+                                    <h5 className="modal-title">No se puede aceptar el proyecto</h5>
+                                    <button
+                                        type="button"
+                                        className="btn-close"
+                                        onClick={() => setMostrarStockInsuficiente(false)}
+                                    ></button>
+                                </div>
+                                <div className="modal-body">
+                                    <p className="mb-3">
+                                        El proyecto <strong>{proyectoConFalta?.nombre_proyecto}</strong> no
+                                        se puede aceptar porque <strong>faltan materiales en el inventario</strong>.
+                                        Debes reponer el stock antes de continuar.
+                                    </p>
+
+                                    <div className="table-responsive">
+                                        <table className="table align-middle">
+                                            <thead className="bg-light">
+                                                <tr>
+                                                    <th>Material</th>
+                                                    <th className="text-center">Planeado</th>
+                                                    <th className="text-center">Disponible</th>
+                                                    <th className="text-center text-danger">Falta</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {faltantesStock.map((f) => (
+                                                    <tr key={f.material_id}>
+                                                        <td>
+                                                            <strong>{f.nombre}</strong>
+                                                        </td>
+                                                        <td className="text-center">{f.planeado}</td>
+                                                        <td className="text-center">{f.disponible}</td>
+                                                        <td className="text-center fw-bold text-danger">
+                                                            {f.faltan}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div className="modal-footer">
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline-secondary"
+                                        onClick={() => setMostrarStockInsuficiente(false)}
+                                    >
+                                        Cerrar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="btn btn-primary"
+                                        onClick={() => {
+                                            setMostrarStockInsuficiente(false);
+                                            navigate("/buscador");
+                                        }}
+                                    >
+                                        Ir al buscador para reponer stock
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
         </AppLayout>
