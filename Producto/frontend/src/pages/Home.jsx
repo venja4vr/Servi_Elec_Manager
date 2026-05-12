@@ -1,6 +1,21 @@
 import { useState, useEffect } from "react";
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import AppLayout from "../components/AppLayout";
 import { getUsuarioNombre, getProyectos, getMateriales } from "../services/api";
+
+const COLORES_ESTADO = {
+    pendiente: "#2563EB",   // azul
+    en_curso: "#FACC15",    // amarillo
+    finalizado: "#22C55E",  // verde
+    cancelado: "#EF4444",   // rojo
+};
+
+const NOMBRES_ESTADO = {
+    pendiente: "Pendientes",
+    en_curso: "En curso",
+    finalizado: "Finalizados",
+    cancelado: "Cancelados",
+};
 
 function Home() {
     const [nombre, setNombre] = useState("");
@@ -8,6 +23,7 @@ function Home() {
     const [statsInventario, setStatsInventario] = useState({ total: 0, criticos: 0 });
     const [proyectosRecientes, setProyectosRecientes] = useState([]);
     const [alertas, setAlertas] = useState([]);
+    const [datosGrafico, setDatosGrafico] = useState([]);
     const [cargando, setCargando] = useState(true);
 
     useEffect(() => {
@@ -42,6 +58,28 @@ function Home() {
                 .filter((m) => m.stock_actual <= m.stock_critico)
                 .slice(0, 3);
             setAlertas(materialesCriticos);
+
+            // Datos para el gráfico de torta
+            const conteo = {
+                pendiente: 0,
+                en_curso: 0,
+                finalizado: 0,
+                cancelado: 0,
+            };
+            proyectos.forEach((p) => {
+                if (conteo[p.estado] !== undefined) {
+                    conteo[p.estado]++;
+                }
+            });
+
+            const datos = Object.keys(conteo)
+                .filter((estado) => conteo[estado] > 0)
+                .map((estado) => ({
+                    name: NOMBRES_ESTADO[estado],
+                    value: conteo[estado],
+                    color: COLORES_ESTADO[estado],
+                }));
+            setDatosGrafico(datos);
         } catch (err) {
             console.error("Error cargando dashboard:", err);
         } finally {
@@ -72,6 +110,27 @@ function Home() {
             cancelado: "Cancelado",
         };
         return mapa[estado] || estado;
+    };
+
+    const renderEtiquetaCustom = ({ cx, cy, midAngle, innerRadius, outerRadius, value }) => {
+        const RADIAN = Math.PI / 180;
+        const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+        const x = cx + radius * Math.cos(-midAngle * RADIAN);
+        const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+        return (
+            <text
+                x={x}
+                y={y}
+                fill="white"
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontWeight="bold"
+                fontSize="14"
+            >
+                {value}
+            </text>
+        );
     };
 
     return (
@@ -126,9 +185,9 @@ function Home() {
                 </div>
             </div>
 
-            <div className="row g-4">
-                <div className="col-md-7">
-                    <div className="card border-0 shadow-sm rounded-4 p-4">
+            <div className="row g-4 mb-4">
+                <div className="col-md-4">
+                    <div className="card border-0 shadow-sm rounded-4 p-4 h-100">
                         <h2 className="h5 fw-bold mb-3">Proyectos recientes</h2>
 
                         {cargando ? (
@@ -144,7 +203,7 @@ function Home() {
                                     className={index < proyectosRecientes.length - 1 ? "border-bottom py-3" : "py-3"}
                                 >
                                     <strong>{proyecto.nombre_proyecto}</strong>
-                                    <p className="text-muted mb-1">
+                                    <p className="text-muted mb-1 small">
                                         Cliente: {proyecto.nombre_cliente}
                                     </p>
                                     <span className={`badge ${getBadgeEstado(proyecto.estado)}`}>
@@ -156,8 +215,47 @@ function Home() {
                     </div>
                 </div>
 
-                <div className="col-md-5">
-                    <div className="card border-0 shadow-sm rounded-4 p-4">
+                <div className="col-md-4">
+                    <div className="card border-0 shadow-sm rounded-4 p-4 h-100">
+                        <h2 className="h5 fw-bold mb-3">Gráfico de proyectos</h2>
+
+                        {cargando ? (
+                            <p className="text-muted">Cargando gráfico...</p>
+                        ) : datosGrafico.length === 0 ? (
+                            <p className="text-muted">
+                                Aún no hay proyectos para graficar.
+                            </p>
+                        ) : (
+                            <ResponsiveContainer width="100%" height={280}>
+                                <PieChart>
+                                    <Pie
+                                        data={datosGrafico}
+                                        dataKey="value"
+                                        nameKey="name"
+                                        cx="50%"
+                                        cy="50%"
+                                        outerRadius={90}
+                                        labelLine={false}
+                                        label={renderEtiquetaCustom}
+                                    >
+                                        {datosGrafico.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip />
+                                    <Legend
+                                        verticalAlign="bottom"
+                                        height={36}
+                                        iconType="circle"
+                                    />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        )}
+                    </div>
+                </div>
+
+                <div className="col-md-4">
+                    <div className="card border-0 shadow-sm rounded-4 p-4 h-100">
                         <h2 className="h5 fw-bold mb-3">Alertas de inventario</h2>
 
                         {cargando ? (
