@@ -24,6 +24,10 @@ function RecursosPendientes() {
     const [categoriaNuevo, setCategoriaNuevo] = useState("");
     const [stockCriticoNuevo, setStockCriticoNuevo] = useState(5);
 
+    // Búsqueda por item del carrito (clave: "codigo-tienda", valor: texto buscado)
+    const [busquedasMaterial, setBusquedasMaterial] = useState({});
+    const [dropdownAbierto, setDropdownAbierto] = useState(null);
+
     useEffect(() => {
         cargarCarrito();
         cargarDatosInventario();
@@ -148,20 +152,12 @@ function RecursosPendientes() {
     return (
         <AppLayout>
             <div className="container-fluid">
-                <div className="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                        <h2 className="fw-bold mb-1">Recursos pendientes</h2>
-                        <p className="text-muted mb-0">
-                            Productos por comprar y agregar al inventario.
-                        </p>
-                    </div>
-                    <button
-                        className="btn btn-dark px-4"
-                        onClick={() => navigate("/buscador")}
-                    >
-                        Volver al buscador
-                    </button>
-                </div>
+                <div className="mb-4">
+                <h2 className="fw-bold mb-1">Recursos pendientes</h2>
+                <p className="text-muted mb-0">
+                    Productos por comprar y agregar al inventario.
+                </p>
+            </div>
 
                 {error && (
                     <div className="alert alert-danger" role="alert">
@@ -189,8 +185,8 @@ function RecursosPendientes() {
                     </div>
                 ) : (
                     <>
-                        <div className="card border-0 shadow-sm rounded-4 mb-3">
-                            <div className="table-responsive">
+                        <div className="card border-0 shadow-sm rounded-4 mb-3" style={{ overflow: "visible" }}>
+                            <div className="table-responsive" style={{ overflow: "visible" }}>
                                 <table className="table align-middle mb-0">
                                     <thead className="bg-light">
                                         <tr>
@@ -242,26 +238,114 @@ function RecursosPendientes() {
                                                 <td className="text-end fw-bold">
                                                     {formatearPrecio(item.precio * item.cantidad)}
                                                 </td>
-                                                <td style={{ minWidth: "250px" }}>
-                                                    <select
-                                                        className="form-select form-select-sm"
-                                                        value={item.material_vinculado || ""}
-                                                        onChange={(e) =>
-                                                            handleVincularMaterial(
-                                                                item.codigo,
-                                                                item.tienda,
-                                                                e.target.value
-                                                            )
-                                                        }
-                                                    >
-                                                        <option value="">Crear material nuevo</option>
-                                                        {materiales.map((m) => (
-                                                            <option key={m.id_material} value={m.id_material}>
-                                                                {m.nombre_material}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </td>
+                                            <td style={{ minWidth: "280px", position: "relative" }}>
+                                                {(() => {
+                                                    const keyItem = `${item.codigo}-${item.tienda}`;
+                                                    const textoBusqueda = busquedasMaterial[keyItem] || "";
+                                                    const materialActual = materiales.find(
+                                                        (m) => m.id_material === item.material_vinculado
+                                                    );
+
+                                                    // Filtrar y limitar a 5 resultados, ordenados por stock más bajo primero
+                                                    const materialesFiltrados = materiales
+                                                        .filter((m) =>
+                                                            textoBusqueda
+                                                                ? m.nombre_material
+                                                                    .toLowerCase()
+                                                                    .includes(textoBusqueda.toLowerCase())
+                                                                : true
+                                                        )
+                                                        .sort((a, b) => a.stock_actual - b.stock_actual)
+                                                        .slice(0, 5);
+
+                                                    return (
+                                                        <>
+                                                            <input
+                                                                type="text"
+                                                                className="form-control form-control-sm"
+                                                                placeholder={
+                                                                    materialActual
+                                                                        ? materialActual.nombre_material
+                                                                        : "Crear material nuevo (o buscar)"
+                                                                }
+                                                                value={textoBusqueda}
+                                                                onChange={(e) =>
+                                                                    setBusquedasMaterial((prev) => ({
+                                                                        ...prev,
+                                                                        [keyItem]: e.target.value,
+                                                                    }))
+                                                                }
+                                                                onFocus={() => setDropdownAbierto(keyItem)}
+                                                                onBlur={() =>
+                                                                    // Delay para permitir click en una opción antes de cerrar
+                                                                    setTimeout(() => setDropdownAbierto(null), 200)
+                                                                }
+                                                            />
+
+                                                            {dropdownAbierto === keyItem && materialesFiltrados.length > 0 && (
+                                                                <div
+                                                                    className="bg-white border rounded shadow-sm position-absolute mt-1"
+                                                                    style={{
+                                                                        zIndex: 1000,
+                                                                        width: "100%",
+                                                                        maxHeight: "200px",
+                                                                        overflowY: "auto",
+                                                                    }}
+                                                                >
+                                                                    {materialesFiltrados.map((m) => (
+                                                                        <div
+                                                                            key={m.id_material}
+                                                                            className="px-2 py-1 border-bottom"
+                                                                            style={{ cursor: "pointer" }}
+                                                                            onMouseDown={(e) => e.preventDefault()}
+                                                                            onClick={() => {
+                                                                                handleVincularMaterial(
+                                                                                    item.codigo,
+                                                                                    item.tienda,
+                                                                                    m.id_material
+                                                                                );
+                                                                                setBusquedasMaterial((prev) => ({
+                                                                                    ...prev,
+                                                                                    [keyItem]: "",
+                                                                                }));
+                                                                                setDropdownAbierto(null);
+                                                                            }}
+                                                                            onMouseEnter={(e) =>
+                                                                                (e.currentTarget.style.background = "#f8f9fa")
+                                                                            }
+                                                                            onMouseLeave={(e) =>
+                                                                                (e.currentTarget.style.background = "white")
+                                                                            }
+                                                                        >
+                                                                            <div className="small fw-bold">{m.nombre_material}</div>
+                                                                            <div className="small text-muted">
+                                                                                Stock: {m.stock_actual} | {formatearPrecio(m.precio_unitario)}
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+
+                                                            {materialActual && (
+                                                                <div className="small mt-1">
+                                                                    <span className="text-success">
+                                                                        Vinculado: {materialActual.nombre_material}
+                                                                    </span>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn btn-link btn-sm p-0 ms-2 text-danger"
+                                                                        onClick={() =>
+                                                                            handleVincularMaterial(item.codigo, item.tienda, null)
+                                                                        }
+                                                                    >
+                                                                        Quitar
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    );
+                                                })()}
+                                            </td>
                                                 <td className="text-center">
                                                     <div className="d-flex gap-1 justify-content-center">
                                                         <button

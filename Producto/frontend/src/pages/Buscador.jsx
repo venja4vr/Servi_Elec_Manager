@@ -94,7 +94,7 @@ function Buscador() {
 
                 <form onSubmit={handleBuscar}>
                     <div className="row align-items-center mb-4">
-                        <div className="col-md-5">
+                        <div className="col-md-7">
                             <input
                                 type="text"
                                 className="form-control"
@@ -117,15 +117,6 @@ function Buscador() {
                         <div className="col-md-2">
                             <button type="submit" className="btn btn-dark w-100" disabled={cargando}>
                                 {cargando ? "Buscando..." : "Buscar"}
-                            </button>
-                        </div>
-                        <div className="col-md-2 text-end">
-                            <button
-                                type="button"
-                                className="btn btn-warning px-3"
-                                onClick={() => navigate("/recursos-pendientes")}
-                            >
-                                Recursos pendientes
                             </button>
                         </div>
                     </div>
