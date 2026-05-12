@@ -1,0 +1,66 @@
+# docker-compose.yml
+# Orquesta los 3 contenedores del proyecto Servi Elec Manager.
+# La BD PostgreSQL NO se incluye acá porque usamos RDS de AWS en producción.
+
+services:
+  # ============================================================
+  # Microservicio de gestión (FastAPI + PostgreSQL)
+  # ============================================================
+  ms-gestion:
+    build:
+      context: ./Producto/backend/ms-gestion
+      dockerfile: Dockerfile
+    container_name: servielec-ms-gestion
+    ports:
+      - "8000:8000"
+    environment:
+      # La URL de la BD se inyecta desde el .env del servidor
+      - DATABASE_URL=${DATABASE_URL}
+    restart: unless-stopped
+    networks:
+      - servielec-network
+
+  # ============================================================
+  # Microservicio del chatbot (WhatsApp Business)
+  # ============================================================
+  ms-chatbot:
+    build:
+      context: ./Producto/backend/ms-chatbot
+      dockerfile: Dockerfile
+    container_name: servielec-ms-chatbot
+    ports:
+      - "8001:8001"
+    environment:
+      # Variables del chatbot inyectadas desde el .env del servidor
+      - WHATSAPP_TOKEN=${WHATSAPP_TOKEN}
+      - WHATSAPP_PHONE_ID=${WHATSAPP_PHONE_ID}
+      - VERIFY_TOKEN=${VERIFY_TOKEN}
+      # En Docker, los servicios se hablan por nombre (no por localhost)
+      - MS_GESTION_URL=http://ms-gestion:8000/
+      - MS_GESTION_TOKEN=${MS_GESTION_TOKEN}
+    depends_on:
+      - ms-gestion
+    restart: unless-stopped
+    networks:
+      - servielec-network
+
+  # ============================================================
+  # Frontend (React + Vite + Nginx)
+  # ============================================================
+  frontend:
+    build:
+      context: ./Producto/frontend
+      dockerfile: Dockerfile
+    container_name: servielec-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - ms-gestion
+    restart: unless-stopped
+    networks:
+      - servielec-network
+
+# Red interna donde los 3 contenedores se comunican
+networks:
+  servielec-network:
+    driver: bridge
