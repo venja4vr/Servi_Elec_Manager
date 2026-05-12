@@ -173,3 +173,22 @@ export async function buscarPrecios(query = "", tienda = "") {
 
     return fetchAPI(endpoint);
 }
+
+// =============== PLANTILLAS - MATERIALES VINCULADOS ===============
+
+export async function getMaterialesDePlantilla(plantillaId) {
+    return fetchAPI(`/plantillas/${plantillaId}/materiales`);
+}
+
+// =============== PROYECTOS - CREAR CON MATERIALES ===============
+
+export async function crearProyectoConMateriales(data) {
+    return fetchAPI("/proyectos/con-materiales", {
+        method: "POST",
+        body: JSON.stringify(data),
+    });
+}
+
+export async function getMaterialesPlaneadosDeProyecto(proyectoId) {
+    return fetchAPI(`/proyectos/${proyectoId}/materiales`);
+}

@@ -82,7 +82,7 @@ function Proyectos() {
                     <h2 className="mb-0">Proyectos</h2>
                     <button
                         className="btn btn-success px-4"
-                        onClick={() => alert("Crear proyecto: lo conectamos en el siguiente paso")}
+                        onClick={() => navigate("/proyectos/nuevo")}
                     >
                         + Nuevo proyecto
                     </button>

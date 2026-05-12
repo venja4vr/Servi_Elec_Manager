@@ -37,7 +37,7 @@ INSERT INTO plantilla_material (plantilla_id, material_id, cantidad_sugerida, un
 -- ============================================================
 -- PLA-CONFIG-MAQ: Configuración Completa de Maquinaria Industrial
 -- ============================================================
-('PLA-CONFIG-MAQ', 'MAT-CABLE-6-N',    1, 'rollo'),
+('PLA-CONFIG-MAQ', 'MAT-CABLE-6-N',    50, 'metro'),
 ('PLA-CONFIG-MAQ', 'MAT-DISY-25A',     1, 'unidad'),
 
 -- ============================================================
@@ -45,5 +45,5 @@ INSERT INTO plantilla_material (plantilla_id, material_id, cantidad_sugerida, un
 -- ============================================================
 ('PLA-SIST-TRIF', 'MAT-GABI-24P',       1, 'unidad'),
 ('PLA-SIST-TRIF', 'MAT-DIFE-T-40A',     1, 'unidad'),
-('PLA-SIST-TRIF', 'MAT-CABLE-10-N',     2, 'rollo'),
-('PLA-SIST-TRIF', 'MAT-CABLE-6-N',      2, 'rollo');
+('PLA-SIST-TRIF', 'MAT-CABLE-10-N',     150, 'metro'),
+('PLA-SIST-TRIF', 'MAT-CABLE-6-N',      80, 'metro'),
