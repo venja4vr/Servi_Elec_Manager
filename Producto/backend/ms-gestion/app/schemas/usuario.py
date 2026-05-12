@@ -30,3 +30,11 @@ class TokenResponse(BaseModel):
     usuario_id: str
     nombre: str
     rol: str
+
+
+class VerifyPasswordRequest(BaseModel):
+    password: str
+
+
+class VerifyPasswordResponse(BaseModel):
+    verified: bool

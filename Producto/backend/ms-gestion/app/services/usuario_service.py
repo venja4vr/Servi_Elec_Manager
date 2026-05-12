@@ -42,3 +42,13 @@ def login(db: Session, data: LoginRequest):
 
 def listar_usuarios(db: Session):
     return db.query(Usuario).all()
+
+def verify_password_for_user(db: Session, usuario_id: str, password: str) -> bool:
+    """
+    Verifica que la contraseña coincida con la del usuario indicado.
+    Usado para confirmar acciones críticas (eliminar, cambiar estado, etc.)
+    """
+    usuario = db.query(Usuario).filter(Usuario.id_usuario == usuario_id).first()
+    if not usuario:
+        return False
+    return verify_password(password, usuario.password_hash)

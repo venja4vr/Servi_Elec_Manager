@@ -210,3 +210,12 @@ export async function ajustarStockMaterial(materialId, cantidad) {
         method: "PATCH",
     });
 }
+
+// =============== VERIFICACIÓN DE CONTRASEÑA ===============
+
+export async function verificarPassword(password) {
+    return fetchAPI("/auth/verify-password", {
+        method: "POST",
+        body: JSON.stringify({ password }),
+    });
+}

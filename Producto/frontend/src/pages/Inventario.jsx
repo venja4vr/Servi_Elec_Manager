@@ -7,6 +7,7 @@ import {
     actualizarMaterial,
     eliminarMaterial,
 } from "../services/api";
+import ConfirmarPasswordModal from "../components/ConfirmarPasswordModal";
 
 function Inventario() {
     const navigate = useNavigate();
@@ -379,54 +380,23 @@ function Inventario() {
                     </div>
                 )}
 
-                {/* MODAL ELIMINAR */}
-                {mostrarEliminar && materialAEliminar && (
-                    <div
-                        className="modal show d-block"
-                        tabIndex="-1"
-                        style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-                    >
-                        <div className="modal-dialog modal-dialog-centered">
-                            <div className="modal-content">
-                                <div className="modal-header">
-                                    <h5 className="modal-title text-danger">Confirmar eliminación</h5>
-                                    <button
-                                        type="button"
-                                        className="btn-close"
-                                        onClick={() => setMostrarEliminar(false)}
-                                    ></button>
-                                </div>
-                                <div className="modal-body">
-                                    <p>
-                                        ¿Estás seguro de eliminar el material{" "}
-                                        <strong>{materialAEliminar.nombre_material}</strong>?
-                                    </p>
-                                    <p className="text-muted small mb-0">
-                                        Esta acción no se puede deshacer. Si el material está vinculado a
-                                        proyectos o plantillas, la eliminación puede ser rechazada por el
-                                        sistema.
-                                    </p>
-                                </div>
-                                <div className="modal-footer">
-                                    <button
-                                        type="button"
-                                        className="btn btn-outline-secondary"
-                                        onClick={() => setMostrarEliminar(false)}
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="btn btn-danger"
-                                        onClick={confirmarEliminar}
-                                    >
-                                        Sí, eliminar
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                {/* MODAL ELIMINAR CON CONTRASEÑA */}
+                <ConfirmarPasswordModal
+                    mostrar={mostrarEliminar}
+                    titulo="Confirmar eliminación"
+                    mensaje={
+                         materialAEliminar
+                         ? `Vas a eliminar el material "${materialAEliminar.nombre_material}". Esta acción no se puede deshacer.`
+                         : ""
+                    }
+                    colorBoton="btn-danger"
+                    textoBoton="Sí, eliminar"
+                    onConfirmar={confirmarEliminar}
+                    onCancelar={() => {
+                        setMostrarEliminar(false);
+                        setMaterialAEliminar(null);
+                    }}
+                />
             </div>
         </AppLayout>
     );

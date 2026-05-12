@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
 import { getProyectos, cambiarEstadoProyecto } from "../services/api";
+import ConfirmarPasswordModal from "../components/ConfirmarPasswordModal";
 
 // Mapa de tabs del front a estados del backend
 const TABS = {
@@ -24,6 +25,10 @@ function Proyectos() {
     const [faltantesStock, setFaltantesStock] = useState([]);
     const [proyectoConFalta, setProyectoConFalta] = useState(null);
 
+    // Modal de confirmación con contraseña
+    const [mostrarPassword, setMostrarPassword] = useState(false);
+    const [accionPendiente, setAccionPendiente] = useState(null);
+
     useEffect(() => {
         cargarProyectos();
     }, [tabActivo]);
@@ -43,33 +48,32 @@ function Proyectos() {
     };
 
     const handleCambiarEstado = async (proyecto, nuevoEstado) => {
-        try {
-            await cambiarEstadoProyecto(proyecto.id_proyecto, nuevoEstado);
-            await cargarProyectos();
-        } catch (err) {
-            // Detectar si el error es de stock insuficiente (detail estructurado)
-            let detail = null;
-            try {
-                detail = typeof err.message === "string" ? JSON.parse(err.message) : err.message;
-            } catch {
-                detail = null;
-            }
-
-            // El backend envía detail.detail.faltantes; nuestro fetchAPI ya extrae detail,
-            // así que err.message puede ser el JSON string del objeto o el resumen string
-            if (err.message && err.message.includes("Stock insuficiente")) {
-                // Hay que parsear desde err.message si es JSON, o pedir al backend
-                await mostrarFaltantesDesdeError(err, proyecto);
-            } else if (typeof err === "object" && err.faltantes) {
-                setFaltantesStock(err.faltantes);
-                setProyectoConFalta(proyecto);
-                setMostrarStockInsuficiente(true);
-            } else {
-                setError(err.message || "Error al cambiar el estado del proyecto");
-            }
+        // Si la acción es crítica (aceptar o cancelar en_curso), pedir contraseña
+        const accionesCriticas = ["en_curso", "cancelado"];
+        if (accionesCriticas.includes(nuevoEstado)) {
+            setAccionPendiente({ proyecto, nuevoEstado });
+            setMostrarPassword(true);
+            return;
         }
+
+        // Acciones no críticas (finalizar, reactivar) → ejecutar directamente
+        await ejecutarCambioEstado(proyecto, nuevoEstado);
     };
 
+const ejecutarCambioEstado = async (proyecto, nuevoEstado) => {
+    try {
+        await cambiarEstadoProyecto(proyecto.id_proyecto, nuevoEstado);
+        await cargarProyectos();
+    } catch (err) {
+        if (err.faltantes && Array.isArray(err.faltantes)) {
+            setFaltantesStock(err.faltantes);
+            setProyectoConFalta(proyecto);
+            setMostrarStockInsuficiente(true);
+        } else {
+            setError(err.message || "Error al cambiar el estado del proyecto");
+        }
+    }
+};
     // Helper para parsear el error de stock insuficiente desde el mensaje del backend
     const mostrarFaltantesDesdeError = async (err, proyecto) => {
         // Intentar obtener faltantes desde err.faltantes directamente
@@ -269,6 +273,47 @@ function Proyectos() {
                         </div>
                     ))
                 )}
+
+                {/* MODAL DE CONFIRMACIÓN CON CONTRASEÑA */}
+                <ConfirmarPasswordModal
+                    mostrar={mostrarPassword}
+                    titulo={
+                        accionPendiente?.nuevoEstado === "en_curso"
+                            ? "Aceptar proyecto"
+                            : "Cancelar proyecto"
+                    }
+                    mensaje={
+                        accionPendiente
+                            ? accionPendiente.nuevoEstado === "en_curso"
+                                ? `Vas a aceptar el proyecto "${accionPendiente.proyecto.nombre_proyecto}". Esto descontará los materiales del inventario.`
+                                : `Vas a cancelar el proyecto "${accionPendiente.proyecto.nombre_proyecto}".${
+                                    accionPendiente.proyecto.estado === "en_curso"
+                                        ? " Los materiales serán devueltos al inventario."
+                                        : ""
+                                }`
+                            : ""
+                    }
+                    colorBoton={
+                        accionPendiente?.nuevoEstado === "en_curso" ? "btn-primary" : "btn-danger"
+                    }
+                    textoBoton={
+                        accionPendiente?.nuevoEstado === "en_curso" ? "Aceptar y descontar" : "Sí, cancelar"
+                    }
+                    onConfirmar={async () => {
+                        if (accionPendiente) {
+                            await ejecutarCambioEstado(
+                                accionPendiente.proyecto,
+                                accionPendiente.nuevoEstado
+                            );
+                        }
+                        setMostrarPassword(false);
+                        setAccionPendiente(null);
+                    }}
+                    onCancelar={() => {
+                        setMostrarPassword(false);
+                        setAccionPendiente(null);
+                    }}
+                />
 
                 {/* MODAL STOCK INSUFICIENTE */}
                 {mostrarStockInsuficiente && (
