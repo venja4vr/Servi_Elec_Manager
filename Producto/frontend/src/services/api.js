@@ -1,5 +1,5 @@
 // Configuración central de la API
-const API_URL = "http://localhost:8000";
+const API_URL = "http://98.95.225.248:8000";
 
 // Función helper para hacer peticiones autenticadas
 export async function fetchAPI(endpoint, options = {}) {
