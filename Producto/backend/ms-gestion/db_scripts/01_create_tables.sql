@@ -11,7 +11,9 @@ CREATE TABLE usuario (
     correo          VARCHAR(40)  NOT NULL UNIQUE,
     password_hash   VARCHAR(255) NOT NULL,
     rol             CHAR(1)      NOT NULL DEFAULT 'A'
-                    CHECK (rol IN ('A', 'T'))
+                    CHECK (rol IN ('S', 'A', 'T')),
+    estado          VARCHAR(20)  NOT NULL DEFAULT 'pendiente'
+                    CHECK (estado IN ('pendiente', 'aprobado'))
 );
 
 -- Tabla CATEGORIA
