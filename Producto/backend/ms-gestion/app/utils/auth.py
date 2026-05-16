@@ -45,6 +45,11 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(http_be
 
 
 def require_admin(current_user: dict = Depends(get_current_user)):
-    if current_user["rol"] != "A":
+    if current_user["rol"] not in ("A", "S"):
         raise HTTPException(status_code=403, detail="Se requieren permisos de administrador")
+    return current_user
+
+def require_superadmin(current_user: dict = Depends(get_current_user)):
+    if current_user["rol"] != "S":
+        raise HTTPException(status_code=403, detail="Solo el SuperAdmin puede realizar esta acción")
     return current_user

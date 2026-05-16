@@ -14,6 +14,7 @@ class UsuarioOut(BaseModel):
     nombre_usuario: str
     correo: str
     rol: str
+    estado: str
 
     class Config:
         from_attributes = True
@@ -38,3 +39,15 @@ class VerifyPasswordRequest(BaseModel):
 
 class VerifyPasswordResponse(BaseModel):
     verified: bool
+
+
+class AprobarUsuarioResponse(BaseModel):
+    id_usuario: str
+    nombre_usuario: str
+    correo: str
+    rol: str
+    estado: str
+    mensaje: str
+
+    class Config:
+        from_attributes = True

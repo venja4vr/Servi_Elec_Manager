@@ -10,3 +10,4 @@ class Usuario(Base):
     correo         = Column(String(40), nullable=False, unique=True)
     password_hash  = Column(String(255), nullable=False)
     rol            = Column(String(1), nullable=False, default="A")
+    estado         = Column(String(20), nullable=False, default="pendiente")
