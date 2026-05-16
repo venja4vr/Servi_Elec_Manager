@@ -226,6 +226,10 @@ export async function getUsuariosPendientes() {
     return fetchAPI("/usuarios/pendientes");
 }
 
+export async function getUsuariosActivos() {
+    return fetchAPI("/usuarios/activos");
+}
+
 export async function aprobarUsuario(usuarioId) {
     return fetchAPI(`/usuarios/${usuarioId}/aprobar`, {
         method: "PATCH",
