@@ -5,9 +5,10 @@ import { login } from "../services/api";
 
 function Login() {
     const navigate = useNavigate();
-    const [correo, setCorreo] = useState(""); //useState son estados de react para guardar lo que el usuario escribe en el formulario
+    const [correo, setCorreo] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+    const [tipoError, setTipoError] = useState("danger");
     const [cargando, setCargando] = useState(false);
 
     const handleLogin = async (e) => {
@@ -19,7 +20,16 @@ function Login() {
             await login(correo, password);
             navigate("/home");
         } catch (err) {
-            setError(err.message || "Error al iniciar sesión");
+            const mensaje = err.message || "Error al iniciar sesión";
+
+            // Si el mensaje contiene "pendiente de aprobación", mostrar como info
+            if (mensaje.toLowerCase().includes("pendiente")) {
+                setTipoError("warning");
+            } else {
+                setTipoError("danger");
+            }
+
+            setError(mensaje);
         } finally {
             setCargando(false);
         }
@@ -37,7 +47,7 @@ function Login() {
                 <h2 className="h4 text-center mb-3">Iniciar sesión</h2>
 
                 {error && (
-                    <div className="alert alert-danger" role="alert">
+                    <div className={`alert alert-${tipoError}`} role="alert">
                         {error}
                     </div>
                 )}

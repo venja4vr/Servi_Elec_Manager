@@ -1,11 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { getUsuariosPendientes, getUsuarioRol } from "../services/api";
 
 const CARRITO_KEY = "recursos_pendientes_carrito";
 
 function Sidebar() {
     const navigate = useNavigate();
     const [cantidadRecursos, setCantidadRecursos] = useState(0);
+    const [cantidadPendientes, setCantidadPendientes] = useState(0);
+    const rol = getUsuarioRol();
+    const esSuperAdmin = rol === "S";
 
     useEffect(() => {
         actualizarContador();
@@ -27,10 +31,28 @@ function Sidebar() {
         };
     }, []);
 
+    useEffect(() => {
+        if (!esSuperAdmin) return;
+
+        cargarPendientes();
+        const intervalo = setInterval(cargarPendientes, 10000);
+        return () => clearInterval(intervalo);
+    }, [esSuperAdmin]);
+
     const actualizarContador = () => {
         const raw = localStorage.getItem(CARRITO_KEY);
         const carrito = raw ? JSON.parse(raw) : [];
         setCantidadRecursos(carrito.length);
+    };
+
+    const cargarPendientes = async () => {
+        try {
+            const pendientes = await getUsuariosPendientes();
+            setCantidadPendientes(pendientes.length);
+        } catch (err) {
+            // Si falla, dejamos el contador en 0 silenciosamente
+            console.error("Error al cargar pendientes:", err);
+        }
     };
 
     const handleCerrarSesion = () => {
@@ -101,6 +123,22 @@ function Sidebar() {
                         Inventario
                     </button>
                 </li>
+
+                {esSuperAdmin && (
+                    <li>
+                        <button
+                            className="nav-link text-white mb-2 w-100 text-start d-flex justify-content-between align-items-center"
+                            onClick={() => navigate("/solicitudes")}
+                        >
+                            <span>Solicitudes</span>
+                            {cantidadPendientes > 0 && (
+                                <span className="badge bg-danger rounded-pill">
+                                    {cantidadPendientes}
+                                </span>
+                            )}
+                        </button>
+                    </li>
+                )}
             </ul>
 
             <hr />

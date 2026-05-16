@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AuthLayout from "../components/AuthLayout";
-import { register, login } from "../services/api";
+import { register } from "../services/api";
 
 function Register() {
     const navigate = useNavigate();
@@ -10,6 +10,7 @@ function Register() {
     const [password, setPassword] = useState("");
     const [confirmarPassword, setConfirmarPassword] = useState("");
     const [error, setError] = useState("");
+    const [exito, setExito] = useState(false);
     const [cargando, setCargando] = useState(false);
 
     const handleRegister = async (e) => {
@@ -30,14 +31,38 @@ function Register() {
 
         try {
             await register(nombre, correo, password);
-            await login(correo, password);
-            navigate("/home");
+            setExito(true);
         } catch (err) {
             setError(err.message || "Error al crear la cuenta");
         } finally {
             setCargando(false);
         }
     };
+
+    if (exito) {
+        return (
+            <AuthLayout>
+                <div className="card shadow-sm rounded-4 p-4" style={{ width: "420px" }}>
+                    <div className="text-center mb-4">
+                        <div className="mb-3" style={{ fontSize: "3rem" }}>✅</div>
+                        <h2 className="fw-bold">¡Cuenta creada!</h2>
+                    </div>
+                    <div className="alert alert-info text-center" role="alert">
+                        Tu cuenta fue registrada correctamente y está <strong>pendiente de aprobación</strong> por el administrador.
+                        <br /><br />
+                        Recibirás acceso al sistema una vez que tu cuenta sea aprobada.
+                    </div>
+                    <button
+                        type="button"
+                        className="btn btn-primary w-100"
+                        onClick={() => navigate("/")}
+                    >
+                        Volver al login
+                    </button>
+                </div>
+            </AuthLayout>
+        );
+    }
 
     return (
         <AuthLayout>

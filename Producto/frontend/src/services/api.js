@@ -49,10 +49,10 @@ export async function login(correo, password) {
     return data;
 }
 
-export async function register(nombre_usuario, correo, password, rol = "A") {
+export async function register(nombre_usuario, correo, password) {
     return fetchAPI("/usuarios/", {
         method: "POST",
-        body: JSON.stringify({ nombre_usuario, correo, password, rol }),
+        body: JSON.stringify({ nombre_usuario, correo, password }),
     });
 }
 
@@ -217,5 +217,23 @@ export async function verificarPassword(password) {
     return fetchAPI("/auth/verify-password", {
         method: "POST",
         body: JSON.stringify({ password }),
+    });
+}
+
+// =============== APROBACIÓN DE CUENTAS (SOLO SUPERADMIN) ===============
+
+export async function getUsuariosPendientes() {
+    return fetchAPI("/usuarios/pendientes");
+}
+
+export async function aprobarUsuario(usuarioId) {
+    return fetchAPI(`/usuarios/${usuarioId}/aprobar`, {
+        method: "PATCH",
+    });
+}
+
+export async function rechazarUsuario(usuarioId) {
+    return fetchAPI(`/usuarios/${usuarioId}`, {
+        method: "DELETE",
     });
 }
