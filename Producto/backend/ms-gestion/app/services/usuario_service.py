@@ -53,6 +53,9 @@ def listar_usuarios(db: Session):
 def listar_usuarios_pendientes(db: Session):
     return db.query(Usuario).filter(Usuario.estado == "pendiente").all()
 
+def listar_usuarios_activos(db: Session):
+    return db.query(Usuario).filter(Usuario.estado == "aprobado").all()
+
 
 def aprobar_usuario(db: Session, usuario_id: str):
     usuario = db.query(Usuario).filter(Usuario.id_usuario == usuario_id).first()

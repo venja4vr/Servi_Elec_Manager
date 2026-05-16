@@ -7,6 +7,7 @@ from app.services.usuario_service import (
     crear_usuario,
     listar_usuarios,
     listar_usuarios_pendientes,
+    listar_usuarios_activos,
     aprobar_usuario,
     rechazar_usuario,
 )
@@ -29,6 +30,9 @@ def listar(db: Session = Depends(get_db), _=Depends(require_admin)):
 def listar_pendientes(db: Session = Depends(get_db), _=Depends(require_superadmin)):
     return listar_usuarios_pendientes(db)
 
+@router.get("/activos", response_model=List[UsuarioOut])
+def listar_activos(db: Session = Depends(get_db), _=Depends(require_superadmin)):
+    return listar_usuarios_activos(db)
 
 @router.patch("/{usuario_id}/aprobar", response_model=UsuarioOut)
 def aprobar(
