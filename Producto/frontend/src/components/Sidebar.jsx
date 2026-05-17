@@ -1,67 +1,41 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
-function Sidebar(){
-    const navigate = useNavigate();
+function Sidebar() {
+  const navigate = useNavigate();
+  const location = useLocation();
 
-    return(
-        <div 
-        className="d-flex flex-column p-3 text-white"
-        style={{
-            width: "250px",
-            height: "100vh",
-            background: "#1E293B",
-        }}
-        >
-            <h4 className="mb-4">ServiElec</h4>
+  const isActive = (path) => location.pathname === path;
 
-            <ul className="nav nav-pills flex-column mb-auto">
-                <li className="nav-item">
-                    <button
-                    className="nav-link text-white bg-primary mb-2"
-                    onClick={() => navigate("/home")}
-                    >
-                        Home
-                    </button>
-                    </li>
-                    
-                    <li>
-                        <button
-                        className="nav-link text-white mb-2"
-                        onClick={() => navigate("/buscador")}
-                        >
-                            Buscador
-                        </button>
-                    </li>
-
-                    <li>
-                        <button 
-                            className="nav-link text-white mb-2"
-                            onClick={() => navigate("/proyectos")}
-                            >
-                            Proyectos
-                        </button>
-
-                        <button
-                            className="nav-link text-white mb-2"
-                            onClick={() => navigate("/inventario")}
-                        >
-                            Invetario
-                        </button>
-                    </li>
-
-            </ul>
-
-
-            <hr />
-            
-            <button
-            className="btn btn-danger"
-            onClick={() => navigate("/")}
-            >
-                Cerrar Sesion
-            </button>
+  return (
+    <aside className="app-sidebar">
+      <div className="sidebar-brand">
+        <div className="sidebar-logo">S</div>
+        <div>
+          <h4>ServiElec</h4>
+          <span>Manager</span>
         </div>
-    );
+      </div>
+
+      <nav className="sidebar-nav">
+        <button className={`sidebar-item ${isActive("/home") ? "active" : ""}`} onClick={() => navigate("/home")}>Home
+        </button>
+
+        <button className={`sidebar-item ${isActive("/buscador") ? "active" : ""}`} onClick={() => navigate("/buscador")}> Buscador
+        </button>
+
+        <button className={`sidebar-item ${isActive("/proyectos") ? "active" : ""}`} onClick={() => navigate("/proyectos")}> Proyectos
+        </button>
+
+        <button className={`sidebar-item ${isActive("/inventario") ? "active" : ""}`} onClick={() => navigate("/inventario")}>Inventario
+        </button>
+      </nav>
+
+      <div className="sidebar-bottom">
+        <button className="sidebar-exit" onClick={() => navigate("/")}> Cerrar sesión
+        </button>
+      </div>
+    </aside>
+  );
 }
 
 export default Sidebar;

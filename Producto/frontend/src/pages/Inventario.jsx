@@ -2,119 +2,87 @@ import { useNavigate } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
 
 function Inventario() {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
 
-    const productos = [
+  const productos = [
     {
-        id: 1,
-        imagen: "INT",
-        codigo: "INT-004",
-        nombre: "Interruptor Simple",
-        descripcion: "Blanco",
-        precio: "$1.890",
-        marca: "Bticino",
-        categoria: "Interruptores",
-        stock: 25,
+      id: 1,
+      imagen: "INT",
+      codigo: "INT-004",
+      nombre: "Interruptor Simple",
+      descripcion: "Blanco",
+      precio: "$1.890",
+      marca: "Bticino",
+      categoria: "Interruptores",
+      stock: 25,
     },
-    ];
+  ];
 
-    return (
+  return (
     <AppLayout>
-        <div className="container-fluid">
-        <div className="d-flex justify-content-between align-items-center mb-4">
-            <div>
-            <h2 className="fw-bold mb-1">Inventario</h2>
-            <p className="text-muted mb-0">
-                Gestión de recursos disponibles para los servicios eléctricos.
-            </p>
-            </div>
+      <div className="inventory-page">
+        <div className="inventory-header">
+          <div>
+            <h1>Inventario</h1>
+            <p>Gestión de recursos disponibles para los servicios eléctricos.</p>
+          </div>
 
-            <button
-            className="btn btn-success px-4"
-            onClick={() => navigate("/agregar-producto")}
-            >
+          <button onClick={() => navigate("/agregar-producto")}>
             Agregar recurso
-            </button>
+          </button>
         </div>
 
-        <div className="row align-items-center mb-4">
-            <div className="col-md-6">
-            <input
-                type="text"
-                className="form-control"
-                placeholder="Buscar recurso por nombre, código, marca o categoría"
-            />
+        <div className="inventory-search">
+          <input
+            type="text"
+            placeholder="Buscar recurso por nombre, código, marca o categoría..."
+            maxLength={150}
+          />
+
+          <button>Buscar</button>
+        </div>
+
+        <div className="inventory-table-card">
+          <div className="inventory-table-head">
+            <span>Imagen</span>
+            <span>Código</span>
+            <span>Nombre</span>
+            <span>Precio</span>
+            <span>Marca</span>
+            <span>Categoría</span>
+            <span>Stock</span>
+            <span>Acciones</span>
+          </div>
+
+          {productos.map((producto) => (
+            <div className="inventory-row" key={producto.id}>
+              <div className="inventory-image">{producto.imagen}</div>
+
+              <div>{producto.codigo}</div>
+
+              <div>
+                <strong>{producto.nombre}</strong>
+                <p>{producto.descripcion}</p>
+              </div>
+
+              <div>{producto.precio}</div>
+              <div>{producto.marca}</div>
+              <div>{producto.categoria}</div>
+
+              <div>
+                <span className="stock-badge">{producto.stock}</span>
+              </div>
+
+              <div className="inventory-actions">
+                <button className="edit-btn">Editar</button>
+                <button className="delete-btn">Eliminar</button>
+              </div>
             </div>
-
-            <div className="col-md-2">
-            <button className="btn btn-primary w-100">Buscar</button>
-            </div>
+          ))}
         </div>
-
-        <div className="card border-0 shadow-sm rounded-4">
-            <div className="table-responsive">
-            <table className="table align-middle mb-0">
-                <thead>
-                <tr>
-                    <th>Imagen</th>
-                    <th>Código</th>
-                    <th>Nombre</th>
-                    <th>Precio</th>
-                    <th>Marca</th>
-                    <th>Categoría</th>
-                    <th>Stock</th>
-                    <th>Acciones</th>
-                </tr>
-                </thead>
-
-                <tbody>
-                {productos.map((producto) => (
-                    <tr key={producto.id}>
-                    <td>
-                        <div
-                        className="border rounded d-flex justify-content-center align-items-center bg-light"
-                        style={{ width: "90px", height: "70px" }}
-                        >
-                        {producto.imagen}
-                        </div>
-                    </td>
-
-                    <td>{producto.codigo}</td>
-
-                    <td>
-                        <strong>{producto.nombre}</strong>
-                        <p className="text-muted mb-0">{producto.descripcion}</p>
-                    </td>
-
-                    <td>{producto.precio}</td>
-                    <td>{producto.marca}</td>
-                    <td>{producto.categoria}</td>
-
-                    <td>
-                        <span className="badge bg-success-subtle text-success border border-success-subtle">
-                        {producto.stock}
-                        </span>
-                    </td>
-
-                    <td>
-                        <div className="d-flex gap-2">
-                        <button className="btn btn-primary btn-sm">
-                            Editar
-                        </button>
-                        <button className="btn btn-danger btn-sm">
-                            Eliminar
-                        </button>
-                        </div>
-                    </td>
-                    </tr>
-                ))}
-                </tbody>
-            </table>
-            </div>
-        </div>
-        </div>
+      </div>
     </AppLayout>
-    );
+  );
 }
 
 export default Inventario;
