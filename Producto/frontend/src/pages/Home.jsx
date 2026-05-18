@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import AppLayout from "../components/AppLayout";
 import { getUsuarioNombre, getProyectos, getMateriales } from "../services/api";
 
 const COLORES_ESTADO = {
-    pendiente: "#2563EB",   // azul
-    en_curso: "#FACC15",    // amarillo
-    finalizado: "#22C55E",  // verde
-    cancelado: "#EF4444",   // rojo
+    pendiente: "#2563EB",
+    en_curso: "#FACC15",
+    finalizado: "#22C55E",
+    cancelado: "#EF4444",
 };
 
 const NOMBRES_ESTADO = {
@@ -18,6 +19,7 @@ const NOMBRES_ESTADO = {
 };
 
 function Home() {
+    const navigate = useNavigate();
     const [nombre, setNombre] = useState("");
     const [statsProyectos, setStatsProyectos] = useState({ total: 0, activos: 0 });
     const [statsInventario, setStatsInventario] = useState({ total: 0, criticos: 0 });
@@ -87,31 +89,6 @@ function Home() {
         }
     };
 
-    const getBadgeEstado = (estado) => {
-        switch (estado) {
-            case "pendiente":
-                return "bg-warning text-dark";
-            case "en_curso":
-                return "bg-primary";
-            case "finalizado":
-                return "bg-success";
-            case "cancelado":
-                return "bg-secondary";
-            default:
-                return "bg-secondary";
-        }
-    };
-
-    const formatearEstado = (estado) => {
-        const mapa = {
-            pendiente: "Pendiente",
-            en_curso: "En curso",
-            finalizado: "Finalizado",
-            cancelado: "Cancelado",
-        };
-        return mapa[estado] || estado;
-    };
-
     const renderEtiquetaCustom = ({ cx, cy, midAngle, innerRadius, outerRadius, value }) => {
         const RADIAN = Math.PI / 180;
         const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
@@ -133,161 +110,254 @@ function Home() {
         );
     };
 
+    // Obtener iniciales del nombre para el avatar
+    const obtenerIniciales = (nombreCompleto) => {
+        if (!nombreCompleto) return "U";
+        const partes = nombreCompleto.trim().split(" ");
+        if (partes.length === 1) return partes[0][0].toUpperCase();
+        return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+    };
+
+    const formatearEstadoVisual = (estado) => {
+        // Mapea estado interno → clase CSS de Hans + texto
+        switch (estado) {
+            case "pendiente":
+                return { clase: "pending", texto: "Pendiente" };
+            case "en_curso":
+                return { clase: "in-progress", texto: "En progreso" };
+            case "finalizado":
+                return { clase: "done", texto: "Completado" };
+            case "cancelado":
+                return { clase: "cancelled", texto: "Cancelado" };
+            default:
+                return { clase: "", texto: estado };
+        }
+    };
+
+    const iconoEstado = (estado) => {
+        switch (estado) {
+            case "pendiente":
+                return { icono: "⚡", clase: "yellow" };
+            case "en_curso":
+                return { icono: "▦", clase: "" };
+            case "finalizado":
+                return { icono: "✓", clase: "green" };
+            case "cancelado":
+                return { icono: "✕", clase: "red" };
+            default:
+                return { icono: "▦", clase: "" };
+        }
+    };
+
     return (
         <AppLayout>
-            <div className="mb-4">
-                <h1 className="fw-bold">Home</h1>
-                <p className="text-muted">Resumen general de la empresa.</p>
-            </div>
-
-            <div className="card border-0 shadow-sm rounded-4 p-4 mb-4">
-                <h2 className="h4 fw-bold">¡Bienvenido, {nombre}!</h2>
-                <p className="text-muted mb-0">
-                    Aquí puedes revisar rápidamente la actividad principal del sistema.
-                </p>
-            </div>
-
-            <div className="row g-4 mb-4">
-                <div className="col-md-3">
-                    <div className="card border-0 shadow-sm rounded-4 p-3">
-                        <p className="text-muted mb-1">Proyectos activos</p>
-                        <h3 className="fw-bold">{cargando ? "..." : statsProyectos.activos}</h3>
-                        <small className="text-muted">
-                            de {statsProyectos.total} en total
-                        </small>
-                    </div>
+            <div className="dashboard-header">
+                <div>
+                    <span className="page-label">Panel principal</span>
+                    <h1>Home</h1>
+                    <p>Resumen general de la empresa y actividad reciente.</p>
                 </div>
 
-                <div className="col-md-3">
-                    <div className="card border-0 shadow-sm rounded-4 p-3">
-                        <p className="text-muted mb-1">Inventario total</p>
-                        <h3 className="fw-bold">{cargando ? "..." : statsInventario.total}</h3>
-                        <small className="text-muted">recursos registrados</small>
-                    </div>
-                </div>
-
-                <div className="col-md-3">
-                    <div className="card border-0 shadow-sm rounded-4 p-3">
-                        <p className="text-muted mb-1">Stock crítico</p>
-                        <h3 className="fw-bold text-warning">
-                            {cargando ? "..." : statsInventario.criticos}
-                        </h3>
-                        <small className="text-muted">materiales en alerta</small>
-                    </div>
-                </div>
-
-                <div className="col-md-3">
-                    <div className="card border-0 shadow-sm rounded-4 p-3">
-                        <p className="text-muted mb-1">Total proyectos</p>
-                        <h3 className="fw-bold">{cargando ? "..." : statsProyectos.total}</h3>
-                        <small className="text-muted">en el sistema</small>
+                <div className="header-actions">
+                    <div className="user-box">
+                        <div className="user-avatar">{obtenerIniciales(nombre)}</div>
+                        <div>
+                            <strong>{nombre || "Usuario"}</strong>
+                            <span>Administrador</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div className="row g-4 mb-4">
-                <div className="col-md-4">
-                    <div className="card border-0 shadow-sm rounded-4 p-4 h-100">
-                        <h2 className="h5 fw-bold mb-3">Proyectos recientes</h2>
+            <section className="welcome-card home-hero-card">
+                <div className="welcome-left">
+                    <div className="welcome-icon">👋</div>
+                    <div>
+                        <h2>¡Bienvenido, {nombre || "Usuario"}!</h2>
+                        <p>
+                            Aquí puedes revisar rápidamente los indicadores principales de
+                            ServiElec Manager.
+                        </p>
+                    </div>
+                </div>
 
-                        {cargando ? (
-                            <p className="text-muted">Cargando proyectos...</p>
-                        ) : proyectosRecientes.length === 0 ? (
-                            <p className="text-muted">
-                                Aún no hay proyectos registrados.
-                            </p>
-                        ) : (
-                            proyectosRecientes.map((proyecto, index) => (
+                <button onClick={() => navigate("/proyectos")}>
+                    Ver proyectos <span>→</span>
+                </button>
+            </section>
+
+            <section className="stats-grid">
+                <div className="stat-card">
+                    <div className="stat-top">
+                        <div>
+                            <span>Proyectos activos</span>
+                            <h3>{cargando ? "..." : statsProyectos.activos}</h3>
+                        </div>
+                        <div className="stat-icon">▣</div>
+                    </div>
+                    <p>de {statsProyectos.total} en total</p>
+                </div>
+
+                <div className="stat-card">
+                    <div className="stat-top">
+                        <div>
+                            <span>Inventario total</span>
+                            <h3>{cargando ? "..." : statsInventario.total}</h3>
+                        </div>
+                        <div className="stat-icon">◈</div>
+                    </div>
+                    <p>recursos registrados</p>
+                </div>
+
+                <div className="stat-card">
+                    <div className="stat-top">
+                        <div>
+                            <span>Stock crítico</span>
+                            <h3>{cargando ? "..." : statsInventario.criticos}</h3>
+                        </div>
+                        <div className="stat-icon warning-icon">▤</div>
+                    </div>
+                    <p className={statsInventario.criticos > 0 ? "negative" : ""}>
+                        {statsInventario.criticos > 0
+                            ? "materiales en alerta"
+                            : "todo en orden"}
+                    </p>
+                </div>
+
+                <div className="stat-card">
+                    <div className="stat-top">
+                        <div>
+                            <span>Total proyectos</span>
+                            <h3>{cargando ? "..." : statsProyectos.total}</h3>
+                        </div>
+                        <div className="stat-icon">☷</div>
+                    </div>
+                    <p>en el sistema</p>
+                </div>
+            </section>
+
+            <section className="home-grid">
+                <div className="dashboard-card activity-card">
+                    <div className="card-title-row">
+                        <h2>Gráfico de proyectos</h2>
+                    </div>
+
+                    {cargando ? (
+                        <p style={{ textAlign: "center", padding: "2rem" }}>
+                            Cargando gráfico...
+                        </p>
+                    ) : datosGrafico.length === 0 ? (
+                        <p style={{ textAlign: "center", padding: "2rem" }}>
+                            Aún no hay proyectos para graficar.
+                        </p>
+                    ) : (
+                        <ResponsiveContainer width="100%" height={320}>
+                            <PieChart>
+                                <Pie
+                                    data={datosGrafico}
+                                    dataKey="value"
+                                    nameKey="name"
+                                    cx="50%"
+                                    cy="50%"
+                                    outerRadius={110}
+                                    labelLine={false}
+                                    label={renderEtiquetaCustom}
+                                >
+                                    {datosGrafico.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                </Pie>
+                                <Tooltip />
+                                <Legend
+                                    verticalAlign="bottom"
+                                    height={36}
+                                    iconType="circle"
+                                />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    )}
+                </div>
+
+                <div className="dashboard-card">
+                    <div className="card-title-row">
+                        <h2>Proyectos recientes</h2>
+                        <button onClick={() => navigate("/proyectos")}>Ver todos</button>
+                    </div>
+
+                    {cargando ? (
+                        <p>Cargando proyectos...</p>
+                    ) : proyectosRecientes.length === 0 ? (
+                        <p>Aún no hay proyectos registrados.</p>
+                    ) : (
+                        proyectosRecientes.map((proyecto) => {
+                            const estadoVisual = formatearEstadoVisual(proyecto.estado);
+                            const icono = iconoEstado(proyecto.estado);
+                            return (
                                 <div
                                     key={proyecto.id_proyecto}
-                                    className={index < proyectosRecientes.length - 1 ? "border-bottom py-3" : "py-3"}
+                                    className="project-item modern-project"
+                                    onClick={() => navigate(`/proyectos/${proyecto.id_proyecto}`)}
+                                    style={{ cursor: "pointer" }}
                                 >
-                                    <strong>{proyecto.nombre_proyecto}</strong>
-                                    <p className="text-muted mb-1 small">
-                                        Cliente: {proyecto.nombre_cliente}
-                                    </p>
-                                    <span className={`badge ${getBadgeEstado(proyecto.estado)}`}>
-                                        {formatearEstado(proyecto.estado)}
+                                    <div className={`project-icon ${icono.clase}`}>
+                                        {icono.icono}
+                                    </div>
+                                    <div>
+                                        <strong>{proyecto.nombre_proyecto}</strong>
+                                        <p>Cliente: {proyecto.nombre_cliente}</p>
+                                    </div>
+                                    <span className={`status ${estadoVisual.clase}`}>
+                                        {estadoVisual.texto}
                                     </span>
                                 </div>
-                            ))
-                        )}
-                    </div>
+                            );
+                        })
+                    )}
                 </div>
 
-                <div className="col-md-4">
-                    <div className="card border-0 shadow-sm rounded-4 p-4 h-100">
-                        <h2 className="h5 fw-bold mb-3">Gráfico de proyectos</h2>
-
-                        {cargando ? (
-                            <p className="text-muted">Cargando gráfico...</p>
-                        ) : datosGrafico.length === 0 ? (
-                            <p className="text-muted">
-                                Aún no hay proyectos para graficar.
-                            </p>
-                        ) : (
-                            <ResponsiveContainer width="100%" height={280}>
-                                <PieChart>
-                                    <Pie
-                                        data={datosGrafico}
-                                        dataKey="value"
-                                        nameKey="name"
-                                        cx="50%"
-                                        cy="50%"
-                                        outerRadius={90}
-                                        labelLine={false}
-                                        label={renderEtiquetaCustom}
-                                    >
-                                        {datosGrafico.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={entry.color} />
-                                        ))}
-                                    </Pie>
-                                    <Tooltip />
-                                    <Legend
-                                        verticalAlign="bottom"
-                                        height={36}
-                                        iconType="circle"
-                                    />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        )}
+                <div className="dashboard-card notifications-card">
+                    <div className="card-title-row">
+                        <h2>Alertas de inventario</h2>
                     </div>
-                </div>
 
-                <div className="col-md-4">
-                    <div className="card border-0 shadow-sm rounded-4 p-4 h-100">
-                        <h2 className="h5 fw-bold mb-3">Alertas de inventario</h2>
-
-                        {cargando ? (
-                            <p className="text-muted">Cargando alertas...</p>
-                        ) : alertas.length === 0 ? (
-                            <div className="alert alert-success mb-0">
-                                Todos los materiales tienen stock adecuado.
+                    {cargando ? (
+                        <p>Cargando alertas...</p>
+                    ) : alertas.length === 0 ? (
+                        <div className="notification-item info">
+                            <div className="notification-icon">i</div>
+                            <div>
+                                <strong>Todo el inventario está en orden</strong>
+                                <span>Sin materiales en stock crítico</span>
                             </div>
-                        ) : (
-                            alertas.map((material) => (
-                                <div
-                                    key={material.id_material}
-                                    className={`alert ${
-                                        material.stock_actual === 0
-                                            ? "alert-danger"
-                                            : "alert-warning"
-                                    } mb-2`}
-                                >
-                                    {material.stock_actual === 0
-                                        ? "Sin stock: "
-                                        : "Stock bajo: "}
-                                    <strong>{material.nombre_material}</strong>
-                                    <small className="d-block">
+                        </div>
+                    ) : (
+                        alertas.map((material) => (
+                            <div
+                                key={material.id_material}
+                                className={`notification-item ${
+                                    material.stock_actual === 0 ? "danger" : "warning"
+                                }`}
+                            >
+                                <div className="notification-icon">
+                                    {material.stock_actual === 0 ? "!" : "⌛"}
+                                </div>
+                                <div>
+                                    <strong>
+                                        {material.stock_actual === 0
+                                            ? "Sin stock: "
+                                            : "Stock bajo: "}
+                                        {material.nombre_material}
+                                    </strong>
+                                    <span>
                                         Disponible: {material.stock_actual} | Crítico:{" "}
                                         {material.stock_critico}
-                                    </small>
+                                    </span>
                                 </div>
-                            ))
-                        )}
-                    </div>
+                            </div>
+                        ))
+                    )}
                 </div>
-            </div>
+            </section>
         </AppLayout>
     );
 }

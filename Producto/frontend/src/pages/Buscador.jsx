@@ -7,6 +7,7 @@ const CARRITO_KEY = "recursos_pendientes_carrito";
 
 function Buscador() {
     const navigate = useNavigate();
+
     const [query, setQuery] = useState("");
     const [tienda, setTienda] = useState("");
     const [productos, setProductos] = useState([]);
@@ -19,11 +20,19 @@ function Buscador() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const cargarProductos = async (textoBusqueda = "", filtroTienda = "") => {
+    const cargarProductos = async (
+        textoBusqueda = "",
+        filtroTienda = ""
+    ) => {
         setCargando(true);
         setError("");
+
         try {
-            const data = await buscarPrecios(textoBusqueda, filtroTienda);
+            const data = await buscarPrecios(
+                textoBusqueda,
+                filtroTienda
+            );
+
             setProductos(data);
         } catch (err) {
             setError(err.message || "Error al cargar productos");
@@ -40,23 +49,24 @@ function Buscador() {
 
     const handleAgregarAlCarrito = (producto) => {
         try {
-            // Leer carrito actual del localStorage
             const carritoRaw = localStorage.getItem(CARRITO_KEY);
             const carrito = carritoRaw ? JSON.parse(carritoRaw) : [];
 
-            // Verificar si el producto ya está en el carrito
             const existe = carrito.find(
                 (item) =>
-                    item.codigo === producto.codigo && item.tienda === producto.tienda
+                    item.codigo === producto.codigo &&
+                    item.tienda === producto.tienda
             );
 
             if (existe) {
-                setError(`"${producto.nombre}" ya está en recursos pendientes.`);
+                setError(
+                    `"${producto.nombre}" ya está en recursos pendientes.`
+                );
+
                 setTimeout(() => setError(""), 3000);
                 return;
             }
 
-            // Agregar producto al carrito con cantidad inicial = 1
             const nuevoItem = {
                 codigo: producto.codigo,
                 nombre: producto.nombre,
@@ -70,12 +80,21 @@ function Buscador() {
             };
 
             carrito.push(nuevoItem);
-            localStorage.setItem(CARRITO_KEY, JSON.stringify(carrito));
 
-            setMensajeOk(`"${producto.nombre}" agregado a recursos pendientes.`);
+            localStorage.setItem(
+                CARRITO_KEY,
+                JSON.stringify(carrito)
+            );
+
+            setMensajeOk(
+                `"${producto.nombre}" agregado a recursos pendientes.`
+            );
+
             setTimeout(() => setMensajeOk(""), 3000);
         } catch (err) {
-            setError("Error al agregar al carrito: " + err.message);
+            setError(
+                "Error al agregar al carrito: " + err.message
+            );
         }
     };
 
@@ -89,111 +108,183 @@ function Buscador() {
 
     return (
         <AppLayout>
-            <div className="container-fluid">
-                <h2 className="mb-4">Buscador de Precios</h2>
+            <div className="search-page">
+                {/* HEADER */}
+                <div className="search-header">
+                    <div>
+                        <h1>Buscador</h1>
 
-                <form onSubmit={handleBuscar}>
-                    <div className="row align-items-center mb-4">
-                        <div className="col-md-7">
-                            <input
-                                type="text"
-                                className="form-control"
-                                placeholder="Buscar por nombre o marca"
-                                value={query}
-                                onChange={(e) => setQuery(e.target.value)}
-                            />
-                        </div>
-                        <div className="col-md-3">
-                            <select
-                                className="form-select"
-                                value={tienda}
-                                onChange={(e) => setTienda(e.target.value)}
-                            >
-                                <option value="">Todas las tiendas</option>
-                                <option value="Sodimac">Sodimac</option>
-                                <option value="Easy">Easy</option>
-                            </select>
-                        </div>
-                        <div className="col-md-2">
-                            <button type="submit" className="btn btn-dark w-100" disabled={cargando}>
-                                {cargando ? "Buscando..." : "Buscar"}
-                            </button>
-                        </div>
+                        <p>
+                            Consulta recursos disponibles para
+                            los servicios eléctricos.
+                        </p>
                     </div>
-                </form>
+                </div>
 
+                {/* ALERTAS */}
                 {error && (
-                    <div className="alert alert-danger" role="alert">
+                    <div
+                        className="alert alert-danger mt-3"
+                        role="alert"
+                    >
                         {error}
                     </div>
                 )}
+
                 {mensajeOk && (
-                    <div className="alert alert-success" role="alert">
+                    <div
+                        className="alert alert-success mt-3"
+                        role="alert"
+                    >
                         {mensajeOk}
                     </div>
                 )}
 
-                <div className="border-top pt-3">
-                    <div className="row text-muted small mb-3 fw-bold">
-                        <div className="col-md-2"></div>
-                        <div className="col-md-3">Nombre</div>
-                        <div className="col-md-2">Marca</div>
-                        <div className="col-md-2">Código</div>
-                        <div className="col-md-1">Tienda</div>
-                        <div className="col-md-1 text-end">Precio</div>
-                        <div className="col-md-1"></div>
+                {/* BUSCADOR */}
+                <form onSubmit={handleBuscar}>
+                    <div className="search-actions">
+                        <input
+                            type="text"
+                            placeholder="Buscar producto, marca o tienda..."
+                            maxLength={150}
+                            value={query}
+                            onChange={(e) =>
+                                setQuery(e.target.value)
+                            }
+                        />
+
+                        <select
+                            value={tienda}
+                            onChange={(e) =>
+                                setTienda(e.target.value)
+                            }
+                            className="search-select"
+                        >
+                            <option value="">
+                                Todas las tiendas
+                            </option>
+
+                            <option value="Sodimac">
+                                Sodimac
+                            </option>
+
+                            <option value="Easy">
+                                Easy
+                            </option>
+                        </select>
+
+                        <button
+                            type="submit"
+                            className="search-btn"
+                            disabled={cargando}
+                        >
+                            {cargando
+                                ? "Buscando..."
+                                : "Buscar"}
+                        </button>
+
+                        <button
+                            type="button"
+                            className="secondary-action-btn"
+                            onClick={() =>
+                                navigate(
+                                    "/recursos-pendientes"
+                                )
+                            }
+                        >
+                            Recursos pendientes
+                        </button>
+                    </div>
+                </form>
+
+                {/* TABLA */}
+                <div className="resource-list">
+                    <div className="resource-table-head">
+                        <span>Producto</span>
+                        <span>Nombre</span>
+                        <span>Precio</span>
+                        <span>Marca</span>
+                        <span>Tienda</span>
                     </div>
 
                     {cargando && productos.length === 0 ? (
-                        <div className="text-center text-muted py-5">Cargando productos...</div>
+                        <div className="text-center py-5 text-muted">
+                            Cargando productos...
+                        </div>
                     ) : productos.length === 0 ? (
-                        <div className="text-center text-muted py-5">
+                        <div className="text-center py-5 text-muted">
                             No se encontraron productos.
                         </div>
                     ) : (
                         productos.map((producto) => (
                             <div
-                                className="row align-items-center mb-3 py-2 border-bottom"
+                                className="resource-row"
                                 key={`${producto.codigo}-${producto.tienda}`}
                             >
-                                <div className="col-md-2">
-                                    <div
-                                        className="border bg-light d-flex justify-content-center align-items-center text-muted small"
-                                        style={{ width: "100px", height: "80px" }}
-                                    >
-                                        Imagen
-                                    </div>
+                                {/* IMAGEN */}
+                                <div className="resource-image">
+                                    Imagen
                                 </div>
-                                <div className="col-md-3">
-                                    <a
-                                        href={producto.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-decoration-none text-dark"
-                                    >
-                                        {producto.nombre}
-                                    </a>
+
+                                {/* INFO */}
+                                <div>
+                                    <strong>
+                                        <a
+                                            href={producto.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-decoration-none text-dark"
+                                        >
+                                            {producto.nombre}
+                                        </a>
+                                    </strong>
+
+                                    <p>
+                                        Código:{" "}
+                                        {producto.codigo}
+                                    </p>
                                 </div>
-                                <div className="col-md-2">{producto.marca}</div>
-                                <div className="col-md-2 small text-muted">{producto.codigo}</div>
-                                <div className="col-md-1">
+
+                                {/* PRECIO */}
+                                <div className="resource-price">
+                                    {formatearPrecio(
+                                        producto.precio
+                                    )}
+                                </div>
+
+                                {/* MARCA */}
+                                <div>
+                                    {producto.marca}
+                                </div>
+
+                                {/* TIENDA + BOTÓN */}
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        flexDirection:
+                                            "column",
+                                        gap: "8px",
+                                    }}
+                                >
                                     <span
                                         className={`badge ${
-                                            producto.tienda === "Sodimac" ? "bg-primary" : "bg-danger"
+                                            producto.tienda ===
+                                            "Sodimac"
+                                                ? "bg-primary"
+                                                : "bg-danger"
                                         }`}
                                     >
                                         {producto.tienda}
                                     </span>
-                                </div>
-                                <div className="col-md-1 text-end fw-bold">
-                                    {formatearPrecio(producto.precio)}
-                                </div>
-                                <div className="col-md-1">
+
                                     <button
                                         type="button"
-                                        className="btn btn-outline-success btn-sm w-100"
-                                        onClick={() => handleAgregarAlCarrito(producto)}
-                                        title="Agregar a recursos pendientes"
+                                        className="btn btn-outline-success btn-sm"
+                                        onClick={() =>
+                                            handleAgregarAlCarrito(
+                                                producto
+                                            )
+                                        }
                                     >
                                         + Agregar
                                     </button>

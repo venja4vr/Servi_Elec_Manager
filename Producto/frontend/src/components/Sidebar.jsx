@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { getUsuariosPendientes, getUsuarioRol } from "../services/api";
 
 const CARRITO_KEY = "recursos_pendientes_carrito";
 
 function Sidebar() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const isActive = (path) => location.pathname === path;
+
     const [cantidadRecursos, setCantidadRecursos] = useState(0);
     const [cantidadPendientes, setCantidadPendientes] = useState(0);
     const rol = getUsuarioRol();
@@ -14,14 +17,10 @@ function Sidebar() {
     useEffect(() => {
         actualizarContador();
 
-        // Escuchar cambios en localStorage (otras pestañas)
         const handler = () => actualizarContador();
         window.addEventListener("storage", handler);
-
-        // Refrescar cada vez que la ventana toma foco
         window.addEventListener("focus", handler);
 
-        // Intervalo para actualizar en la misma pestaña
         const intervalo = setInterval(actualizarContador, 1500);
 
         return () => {
@@ -50,7 +49,6 @@ function Sidebar() {
             const pendientes = await getUsuariosPendientes();
             setCantidadPendientes(pendientes.length);
         } catch (err) {
-            // Si falla, dejamos el contador en 0 silenciosamente
             console.error("Error al cargar pendientes:", err);
         }
     };
@@ -64,89 +62,73 @@ function Sidebar() {
     };
 
     return (
-        <div
-            className="d-flex flex-column p-3 text-white"
-            style={{
-                width: "250px",
-                height: "100vh",
-                background: "#1E293B",
-            }}
-        >
-            <h4 className="mb-4">ServiElec</h4>
-            <ul className="nav nav-pills flex-column mb-auto">
-                <li className="nav-item">
-                    <button
-                        className="nav-link text-white bg-primary mb-2 w-100 text-start"
-                        onClick={() => navigate("/home")}
-                    >
-                        Home
-                    </button>
-                </li>
+        <aside className="app-sidebar">
+            <div className="sidebar-brand">
+                <div className="sidebar-logo">S</div>
+                <div>
+                    <h4>ServiElec</h4>
+                    <span>Manager</span>
+                </div>
+            </div>
 
-                <li>
-                    <button
-                        className="nav-link text-white mb-2 w-100 text-start"
-                        onClick={() => navigate("/buscador")}
-                    >
-                        Buscador
-                    </button>
-                </li>
+            <nav className="sidebar-nav">
+                <button
+                    className={`sidebar-item ${isActive("/home") ? "active" : ""}`}
+                    onClick={() => navigate("/home")}
+                >
+                    Home
+                </button>
 
-                <li>
-                    <button
-                        className="nav-link text-white mb-2 w-100 text-start d-flex justify-content-between align-items-center"
-                        onClick={() => navigate("/recursos-pendientes")}
-                    >
-                        <span>Recursos pendientes</span>
-                        {cantidadRecursos > 0 && (
-                            <span className="badge bg-warning text-dark rounded-pill">
-                                {cantidadRecursos}
-                            </span>
-                        )}
-                    </button>
-                </li>
+                <button
+                    className={`sidebar-item ${isActive("/buscador") ? "active" : ""}`}
+                    onClick={() => navigate("/buscador")}
+                >
+                    Buscador
+                </button>
 
-                <li>
-                    <button
-                        className="nav-link text-white mb-2 w-100 text-start"
-                        onClick={() => navigate("/proyectos")}
-                    >
-                        Proyectos
-                    </button>
-                </li>
+                <button
+                    className={`sidebar-item ${isActive("/recursos-pendientes") ? "active" : ""}`}
+                    onClick={() => navigate("/recursos-pendientes")}
+                >
+                    <span>Recursos pendientes</span>
+                    {cantidadRecursos > 0 && (
+                        <span className="sidebar-badge warning">{cantidadRecursos}</span>
+                    )}
+                </button>
 
-                <li>
-                    <button
-                        className="nav-link text-white mb-2 w-100 text-start"
-                        onClick={() => navigate("/inventario")}
-                    >
-                        Inventario
-                    </button>
-                </li>
+                <button
+                    className={`sidebar-item ${isActive("/proyectos") ? "active" : ""}`}
+                    onClick={() => navigate("/proyectos")}
+                >
+                    Proyectos
+                </button>
+
+                <button
+                    className={`sidebar-item ${isActive("/inventario") ? "active" : ""}`}
+                    onClick={() => navigate("/inventario")}
+                >
+                    Inventario
+                </button>
 
                 {esSuperAdmin && (
-                    <li>
-                        <button
-                            className="nav-link text-white mb-2 w-100 text-start d-flex justify-content-between align-items-center"
-                            onClick={() => navigate("/solicitudes")}
-                        >
-                            <span>Solicitudes</span>
-                            {cantidadPendientes > 0 && (
-                                <span className="badge bg-danger rounded-pill">
-                                    {cantidadPendientes}
-                                </span>
-                            )}
-                        </button>
-                    </li>
+                    <button
+                        className={`sidebar-item ${isActive("/solicitudes") ? "active" : ""}`}
+                        onClick={() => navigate("/solicitudes")}
+                    >
+                        <span>Solicitudes</span>
+                        {cantidadPendientes > 0 && (
+                            <span className="sidebar-badge danger">{cantidadPendientes}</span>
+                        )}
+                    </button>
                 )}
-            </ul>
+            </nav>
 
-            <hr />
-
-            <button className="btn btn-danger" onClick={handleCerrarSesion}>
-                Cerrar Sesión
-            </button>
-        </div>
+            <div className="sidebar-bottom">
+                <button className="sidebar-exit" onClick={handleCerrarSesion}>
+                    Cerrar sesión
+                </button>
+            </div>
+        </aside>
     );
 }
 

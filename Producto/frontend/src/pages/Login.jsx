@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import AuthLayout from "../components/AuthLayout";
 import { login } from "../services/api";
 
-// Regex para validar formato de correo
 const REGEX_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function Login() {
@@ -11,7 +10,6 @@ function Login() {
     const [correo, setCorreo] = useState("");
     const [password, setPassword] = useState("");
 
-    // Errores por campo
     const [errorCorreo, setErrorCorreo] = useState("");
     const [errorPassword, setErrorPassword] = useState("");
 
@@ -19,7 +17,6 @@ function Login() {
     const [tipoError, setTipoError] = useState("danger");
     const [cargando, setCargando] = useState(false);
 
-    // ====== VALIDADORES ======
     const validarCorreo = (valor) => {
         if (!valor.trim()) return "El correo es obligatorio";
         if (!REGEX_CORREO.test(valor)) return "Formato de correo inválido";
@@ -31,22 +28,19 @@ function Login() {
         return "";
     };
 
-    // ====== HANDLERS DE BLUR (al salir del campo) ======
     const handleBlurCorreo = () => setErrorCorreo(validarCorreo(correo));
     const handleBlurPassword = () => setErrorPassword(validarPassword(password));
 
-    // ====== SUBMIT ======
     const handleLogin = async (e) => {
         e.preventDefault();
         setError("");
 
-        // Validar todos los campos
         const errC = validarCorreo(correo);
         const errP = validarPassword(password);
         setErrorCorreo(errC);
         setErrorPassword(errP);
 
-        if (errC || errP) return; // Si hay errores, no enviar
+        if (errC || errP) return;
 
         setCargando(true);
 
@@ -68,14 +62,9 @@ function Login() {
 
     return (
         <AuthLayout>
-            <div className="card shadow-sm rounded-4 p-4" style={{ width: "420px" }}>
-                <div className="text-center mb-4">
-                    <h1 className="fw-bold">ServiElec Manager</h1>
-                    <p className="text-muted mb-0">
-                        Sistema de gestión de servicios eléctricos
-                    </p>
-                </div>
-                <h2 className="h4 text-center mb-3">Iniciar sesión</h2>
+            <div className="auth-card">
+                <h2>Iniciar sesión</h2>
+                <p className="auth-subtitle">Ingresa tus credenciales para continuar</p>
 
                 {error && (
                     <div className={`alert alert-${tipoError}`} role="alert">
@@ -84,49 +73,54 @@ function Login() {
                 )}
 
                 <form onSubmit={handleLogin} noValidate>
-                    <div className="mb-3">
-                        <label className="form-label">Correo</label>
-                        <input
-                            type="email"
-                            className={`form-control ${errorCorreo ? "is-invalid" : ""}`}
-                            placeholder="ejemplo@correo.com"
-                            value={correo}
-                            onChange={(e) => setCorreo(e.target.value)}
-                            onBlur={handleBlurCorreo}
-                        />
+                    <div className="auth-field">
+                        <label>Correo</label>
+                        <div className="auth-input-group">
+                            <input
+                                type="email"
+                                placeholder="ejemplo@correo.com"
+                                maxLength={40}
+                                value={correo}
+                                onChange={(e) => setCorreo(e.target.value)}
+                                onBlur={handleBlurCorreo}
+                                className={errorCorreo ? "is-invalid" : ""}
+                            />
+                        </div>
                         {errorCorreo && (
-                            <div className="invalid-feedback">{errorCorreo}</div>
+                            <small className="auth-error">{errorCorreo}</small>
                         )}
                     </div>
-                    <div className="mb-4">
-                        <label className="form-label">Contraseña</label>
-                        <input
-                            type="password"
-                            className={`form-control ${errorPassword ? "is-invalid" : ""}`}
-                            placeholder="Ingresa tu contraseña"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            onBlur={handleBlurPassword}
-                        />
+
+                    <div className="auth-field">
+                        <label>Contraseña</label>
+                        <div className="auth-input-group">
+                            <input
+                                type="password"
+                                placeholder="Ingresa tu contraseña"
+                                maxLength={30}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                onBlur={handleBlurPassword}
+                                className={errorPassword ? "is-invalid" : ""}
+                            />
+                        </div>
                         {errorPassword && (
-                            <div className="invalid-feedback">{errorPassword}</div>
+                            <small className="auth-error">{errorPassword}</small>
                         )}
                     </div>
+
                     <button
                         type="submit"
-                        className="btn btn-primary w-100"
+                        className="auth-main-btn"
                         disabled={cargando}
                     >
                         {cargando ? "Ingresando..." : "Ingresar"}
                     </button>
                 </form>
-                <div className="text-center mt-4">
-                    <p className="text-muted mb-1">¿No tienes cuenta?</p>
-                    <button
-                        type="button"
-                        className="btn btn-link"
-                        onClick={() => navigate("/register")}
-                    >
+
+                <div className="auth-footer">
+                    <span>¿No tienes cuenta?</span>
+                    <button type="button" onClick={() => navigate("/register")}>
                         Crear cuenta
                     </button>
                 </div>

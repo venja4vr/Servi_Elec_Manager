@@ -4,7 +4,6 @@ import AppLayout from "../components/AppLayout";
 import { getProyectos, cambiarEstadoProyecto } from "../services/api";
 import ConfirmarPasswordModal from "../components/ConfirmarPasswordModal";
 
-// Mapa de tabs del front a estados del backend
 const TABS = {
     pendientes: "pendiente",
     enCurso: "en_curso",
@@ -48,44 +47,28 @@ function Proyectos() {
     };
 
     const handleCambiarEstado = async (proyecto, nuevoEstado) => {
-        // Si la acción es crítica (aceptar o cancelar en_curso), pedir contraseña
         const accionesCriticas = ["en_curso", "cancelado"];
         if (accionesCriticas.includes(nuevoEstado)) {
             setAccionPendiente({ proyecto, nuevoEstado });
             setMostrarPassword(true);
             return;
         }
-
-        // Acciones no críticas (finalizar, reactivar) → ejecutar directamente
         await ejecutarCambioEstado(proyecto, nuevoEstado);
     };
 
-const ejecutarCambioEstado = async (proyecto, nuevoEstado) => {
-    try {
-        await cambiarEstadoProyecto(proyecto.id_proyecto, nuevoEstado);
-        await cargarProyectos();
-    } catch (err) {
-        if (err.faltantes && Array.isArray(err.faltantes)) {
-            setFaltantesStock(err.faltantes);
-            setProyectoConFalta(proyecto);
-            setMostrarStockInsuficiente(true);
-        } else {
-            setError(err.message || "Error al cambiar el estado del proyecto");
+    const ejecutarCambioEstado = async (proyecto, nuevoEstado) => {
+        try {
+            await cambiarEstadoProyecto(proyecto.id_proyecto, nuevoEstado);
+            await cargarProyectos();
+        } catch (err) {
+            if (err.faltantes && Array.isArray(err.faltantes)) {
+                setFaltantesStock(err.faltantes);
+                setProyectoConFalta(proyecto);
+                setMostrarStockInsuficiente(true);
+            } else {
+                setError(err.message || "Error al cambiar el estado del proyecto");
+            }
         }
-    }
-};
-    // Helper para parsear el error de stock insuficiente desde el mensaje del backend
-    const mostrarFaltantesDesdeError = async (err, proyecto) => {
-        // Intentar obtener faltantes desde err.faltantes directamente
-        if (err.faltantes && Array.isArray(err.faltantes)) {
-            setFaltantesStock(err.faltantes);
-            setProyectoConFalta(proyecto);
-            setMostrarStockInsuficiente(true);
-            return;
-        }
-
-        // Si no, mostrar mensaje genérico
-        setError(err.message || "Stock insuficiente para aceptar el proyecto");
     };
 
     const formatearPrecio = (precio) => {
@@ -97,18 +80,16 @@ const ejecutarCambioEstado = async (proyecto, nuevoEstado) => {
         }).format(precio);
     };
 
-const formatearFecha = (fecha) => {
-    if (!fecha) return "Sin definir";
-    // La fecha viene como "YYYY-MM-DD". Parseamos los números directamente
-    // para evitar problemas de zona horaria.
-    const [year, month, day] = fecha.split("-").map(Number);
-    const d = new Date(year, month - 1, day);
-    return d.toLocaleDateString("es-CL", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-    });
-};
+    const formatearFecha = (fecha) => {
+        if (!fecha) return "Sin definir";
+        const [year, month, day] = fecha.split("-").map(Number);
+        const d = new Date(year, month - 1, day);
+        return d.toLocaleDateString("es-CL", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+        });
+    };
 
     const proyectosFiltrados = proyectos.filter((p) => {
         if (!busqueda) return true;
@@ -120,56 +101,78 @@ const formatearFecha = (fecha) => {
         );
     });
 
+    const claseEstado = (tab) => {
+        // Mapeo del tab interno → clase CSS de Hans
+        switch (tab) {
+            case "pendientes": return "pendientes";
+            case "enCurso": return "enCurso";
+            case "finalizado": return "finalizado";
+            case "cancelado": return "cancelado";
+            default: return "";
+        }
+    };
+
+    const textoEstado = (tab) => {
+        switch (tab) {
+            case "pendientes": return "Pendiente";
+            case "enCurso": return "En curso";
+            case "finalizado": return "Finalizado";
+            case "cancelado": return "Cancelado";
+            default: return tab;
+        }
+    };
+
     return (
         <AppLayout>
-            <div className="container-fluid">
-                <div className="d-flex justify-content-between align-items-center mb-4">
-                    <h2 className="mb-0">Proyectos</h2>
+            <div className="projects-page">
+                <div className="projects-header">
+                    <div>
+                        <h1>Proyectos</h1>
+                        <p>Administra proyectos eléctricos y revisa su estado actual.</p>
+                    </div>
                     <button
-                        className="btn btn-success px-4"
+                        className="primary-btn"
                         onClick={() => navigate("/proyectos/nuevo")}
                     >
                         + Nuevo proyecto
                     </button>
                 </div>
 
-                <div className="d-flex gap-2 mb-3">
+                <div className="projects-tabs">
                     <button
-                        className={`btn ${tabActivo === "pendientes" ? "btn-primary" : "btn-outline-secondary"}`}
+                        className={tabActivo === "pendientes" ? "active" : ""}
                         onClick={() => setTabActivo("pendientes")}
                     >
                         Pendientes
                     </button>
                     <button
-                        className={`btn ${tabActivo === "enCurso" ? "btn-primary" : "btn-outline-secondary"}`}
+                        className={tabActivo === "enCurso" ? "active" : ""}
                         onClick={() => setTabActivo("enCurso")}
                     >
                         En curso
                     </button>
                     <button
-                        className={`btn ${tabActivo === "finalizado" ? "btn-primary" : "btn-outline-secondary"}`}
+                        className={tabActivo === "finalizado" ? "active" : ""}
                         onClick={() => setTabActivo("finalizado")}
                     >
-                        Finalizado
+                        Finalizados
                     </button>
                     <button
-                        className={`btn ${tabActivo === "cancelado" ? "btn-primary" : "btn-outline-secondary"}`}
+                        className={tabActivo === "cancelado" ? "active" : ""}
                         onClick={() => setTabActivo("cancelado")}
                     >
-                        Cancelado
+                        Cancelados
                     </button>
                 </div>
 
-                <div className="row mb-4">
-                    <div className="col-md-12">
-                        <input
-                            type="text"
-                            className="form-control"
-                            placeholder="Buscar por nombre del proyecto, cliente o tipo"
-                            value={busqueda}
-                            onChange={(e) => setBusqueda(e.target.value)}
-                        />
-                    </div>
+                <div className="projects-filters">
+                    <input
+                        type="text"
+                        placeholder="Buscar por nombre del proyecto, cliente o tipo"
+                        maxLength={150}
+                        value={busqueda}
+                        onChange={(e) => setBusqueda(e.target.value)}
+                    />
                 </div>
 
                 {error && (
@@ -178,46 +181,47 @@ const formatearFecha = (fecha) => {
                     </div>
                 )}
 
-                {cargando ? (
-                    <div className="text-center text-muted py-5">Cargando proyectos...</div>
-                ) : proyectosFiltrados.length === 0 ? (
-                    <div className="text-center text-muted py-5">
-                        {busqueda
-                            ? "No se encontraron proyectos con esa búsqueda."
-                            : `No hay proyectos en estado "${tabActivo}".`}
-                    </div>
-                ) : (
-                    proyectosFiltrados.map((proyecto) => (
-                        <div className="card mb-3 border-0 shadow-sm" key={proyecto.id_proyecto}>
-                            <div className="row g-0 p-3 align-items-center">
-                                <div className="col-md-5">
-                                    <h5 className="fw-bold mb-2">{proyecto.nombre_proyecto}</h5>
-                                    <p className="mb-1">
-                                        <strong>Cliente:</strong> {proyecto.nombre_cliente}
-                                    </p>
-                                    <p className="mb-0">
-                                        <strong>Tipo:</strong>{" "}
-                                        {proyecto.tipo_proyecto || "Sin especificar"}
-                                    </p>
+                <div className="projects-list">
+                    {cargando ? (
+                        <div style={{ textAlign: "center", padding: "3rem" }}>
+                            Cargando proyectos...
+                        </div>
+                    ) : proyectosFiltrados.length === 0 ? (
+                        <div style={{ textAlign: "center", padding: "3rem" }}>
+                            {busqueda
+                                ? "No se encontraron proyectos con esa búsqueda."
+                                : `No hay proyectos en estado "${textoEstado(tabActivo)}".`}
+                        </div>
+                    ) : (
+                        proyectosFiltrados.map((proyecto) => (
+                            <div className="project-card" key={proyecto.id_proyecto}>
+                                <div className="project-info">
+                                    <h3>{proyecto.nombre_proyecto}</h3>
+                                    <p>Cliente: {proyecto.nombre_cliente}</p>
+                                    <p>Tipo: {proyecto.tipo_proyecto || "Sin especificar"}</p>
                                 </div>
 
-                                <div className="col-md-4">
-                                    <p className="mb-1">
-                                        <strong>Inicio:</strong> {formatearFecha(proyecto.fecha_inicio)}
+                                <div className="project-meta">
+                                    <p>
+                                        <strong>Inicio:</strong>{" "}
+                                        {formatearFecha(proyecto.fecha_inicio)}
                                     </p>
-                                    <p className="mb-1">
+                                    <p>
                                         <strong>Término máx.:</strong>{" "}
                                         {formatearFecha(proyecto.fecha_termino_maximo)}
                                     </p>
-                                    <p className="mb-0">
+                                    <p>
                                         <strong>Presupuesto:</strong>{" "}
                                         {formatearPrecio(proyecto.presupuesto_estimado)}
                                     </p>
+                                    <span className={`project-status ${claseEstado(tabActivo)}`}>
+                                        {textoEstado(tabActivo)}
+                                    </span>
                                 </div>
 
-                                <div className="col-md-3 d-flex flex-column gap-2">
+                                <div className="project-actions">
                                     <button
-                                        className="btn btn-dark"
+                                        className="primary-btn"
                                         onClick={() => navigate(`/proyectos/${proyecto.id_proyecto}`)}
                                     >
                                         Ver detalle
@@ -226,13 +230,13 @@ const formatearFecha = (fecha) => {
                                     {tabActivo === "pendientes" && (
                                         <>
                                             <button
-                                                className="btn btn-primary"
+                                                className="secondary-btn"
                                                 onClick={() => handleCambiarEstado(proyecto, "en_curso")}
                                             >
                                                 Aceptar
                                             </button>
                                             <button
-                                                className="btn btn-outline-danger"
+                                                className="light-btn"
                                                 onClick={() => handleCambiarEstado(proyecto, "cancelado")}
                                             >
                                                 Rechazar
@@ -243,13 +247,13 @@ const formatearFecha = (fecha) => {
                                     {tabActivo === "enCurso" && (
                                         <>
                                             <button
-                                                className="btn btn-success"
+                                                className="secondary-btn"
                                                 onClick={() => handleCambiarEstado(proyecto, "finalizado")}
                                             >
                                                 Finalizar
                                             </button>
                                             <button
-                                                className="btn btn-outline-danger"
+                                                className="light-btn"
                                                 onClick={() => handleCambiarEstado(proyecto, "cancelado")}
                                             >
                                                 Cancelar
@@ -257,15 +261,9 @@ const formatearFecha = (fecha) => {
                                         </>
                                     )}
 
-                                    {tabActivo === "finalizado" && (
-                                        <span className="badge bg-success p-2 text-center">
-                                            Proyecto finalizado
-                                        </span>
-                                    )}
-
                                     {tabActivo === "cancelado" && (
                                         <button
-                                            className="btn btn-outline-primary"
+                                            className="light-btn"
                                             onClick={() => handleCambiarEstado(proyecto, "pendiente")}
                                         >
                                             Reactivar
@@ -273,9 +271,9 @@ const formatearFecha = (fecha) => {
                                     )}
                                 </div>
                             </div>
-                        </div>
-                    ))
-                )}
+                        ))
+                    )}
+                </div>
 
                 {/* MODAL DE CONFIRMACIÓN CON CONTRASEÑA */}
                 <ConfirmarPasswordModal

@@ -22,12 +22,10 @@ function DetalleProyecto() {
     const [error, setError] = useState("");
     const [mensajeOk, setMensajeOk] = useState("");
 
-    // Modal de edición
     const [mostrarEditar, setMostrarEditar] = useState(false);
     const [datosEdicion, setDatosEdicion] = useState({});
     const [guardando, setGuardando] = useState(false);
 
-    // Errores del modal de edición
     const [errEdNombreProyecto, setErrEdNombreProyecto] = useState("");
     const [errEdTipoProyecto, setErrEdTipoProyecto] = useState("");
     const [errEdNombreCliente, setErrEdNombreCliente] = useState("");
@@ -80,18 +78,13 @@ function DetalleProyecto() {
         });
     };
 
-    const getBadgeEstado = (estado) => {
+    const claseEstado = (estado) => {
         switch (estado) {
-            case "pendiente":
-                return "bg-warning text-dark";
-            case "en_curso":
-                return "bg-primary";
-            case "finalizado":
-                return "bg-success";
-            case "cancelado":
-                return "bg-secondary";
-            default:
-                return "bg-secondary";
+            case "pendiente": return "detail-badge warning";
+            case "en_curso": return "detail-badge primary";
+            case "finalizado": return "detail-badge success";
+            case "cancelado": return "detail-badge secondary";
+            default: return "detail-badge";
         }
     };
 
@@ -105,7 +98,6 @@ function DetalleProyecto() {
         return mapa[estado] || estado;
     };
 
-    // ====== VALIDADORES DEL MODAL EDITAR ======
     const vEdNombreProyecto = (v) => validarTexto(v, { minimo: 3, maximo: 50, etiqueta: "El nombre del proyecto" });
     const vEdTipoProyecto = (v) => validarTextoOpcional(v, { maximo: 25, etiqueta: "El tipo de proyecto" });
     const vEdNombreCliente = (v) => validarTexto(v, { minimo: 3, maximo: 50, etiqueta: "El nombre del cliente" });
@@ -117,7 +109,6 @@ function DetalleProyecto() {
     };
     const vEdObservaciones = (v) => validarTextoOpcional(v, { maximo: 500, etiqueta: "Las observaciones" });
     const vEdFechas = (inicio, termino) => {
-        // Si ambas fechas existen, fecha_termino debe ser >= fecha_inicio
         if (!inicio || !termino) return "";
         if (new Date(termino) < new Date(inicio)) {
             return "La fecha de término no puede ser anterior a la fecha de inicio";
@@ -125,7 +116,6 @@ function DetalleProyecto() {
         return "";
     };
 
-    // EDITAR PROYECTO
     const abrirEditar = () => {
         setDatosEdicion({
             nombre_proyecto: proyecto.nombre_proyecto || "",
@@ -139,7 +129,6 @@ function DetalleProyecto() {
             presupuesto_final: proyecto.presupuesto_final || "",
             observaciones: proyecto.observaciones || "",
         });
-        // Limpiar errores
         setErrEdNombreProyecto("");
         setErrEdTipoProyecto("");
         setErrEdNombreCliente("");
@@ -160,7 +149,6 @@ function DetalleProyecto() {
     const confirmarEditar = async () => {
         setError("");
 
-        // Validar todos los campos
         const errNP = vEdNombreProyecto(datosEdicion.nombre_proyecto);
         const errTP = vEdTipoProyecto(datosEdicion.tipo_proyecto);
         const errNC = vEdNombreCliente(datosEdicion.nombre_cliente);
@@ -179,7 +167,6 @@ function DetalleProyecto() {
         setErrEdPresupuestoEst(errPreEst);
         setErrEdPresupuestoFinal(errPreFin);
         setErrEdObservaciones(errObs);
-        // El error de fechas lo asignamos al campo de término máximo
         setErrEdFechaTermino(errFechas);
 
         if (errNP || errTP || errNC || errTel || errDir || errPreEst || errPreFin || errObs || errFechas) {
@@ -219,8 +206,8 @@ function DetalleProyecto() {
     if (cargando) {
         return (
             <AppLayout>
-                <div className="text-center py-5">
-                    <p className="text-muted">Cargando detalle del proyecto...</p>
+                <div style={{ textAlign: "center", padding: "3rem" }}>
+                    Cargando detalle del proyecto...
                 </div>
             </AppLayout>
         );
@@ -229,24 +216,21 @@ function DetalleProyecto() {
     if (error && !proyecto) {
         return (
             <AppLayout>
-                <div className="container-fluid">
-                    <div className="alert alert-danger" role="alert">
-                        {error}
-                    </div>
-                    <button
-                        className="btn btn-dark"
-                        onClick={() => navigate("/proyectos")}
-                    >
-                        Volver a proyectos
-                    </button>
+                <div className="alert alert-danger" role="alert">
+                    {error}
                 </div>
+                <button
+                    className="cancel-btn"
+                    onClick={() => navigate("/proyectos")}
+                >
+                    Volver a proyectos
+                </button>
             </AppLayout>
         );
     }
 
     if (!proyecto) return null;
 
-    // Cálculos
     const costoMateriales = materiales.reduce(
         (sum, m) => sum + Number(m.precio_unitario || 0) * Number(m.cantidad_planeada || 0),
         0
@@ -256,31 +240,25 @@ function DetalleProyecto() {
 
     return (
         <AppLayout>
-            <div className="container-fluid">
-                <div className="d-flex justify-content-between align-items-start mb-4">
+            <div className="project-detail-page">
+                <div className="project-detail-header">
                     <div>
-                        <h1 className="fw-bold mb-1">{proyecto.nombre_proyecto}</h1>
-                        <p className="text-muted fs-5 mb-0">
+                        <h1>{proyecto.nombre_proyecto}</h1>
+                        <p>
                             Proyecto #{proyecto.id_proyecto.substring(0, 8)} —{" "}
-                            <span className={`badge ${getBadgeEstado(proyecto.estado)} ms-1`}>
+                            <span className={claseEstado(proyecto.estado)}>
                                 {formatearEstado(proyecto.estado)}
                             </span>
                         </p>
                     </div>
 
-                    <div className="d-flex gap-2">
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
                         {sePuedeEditar && (
-                            <button
-                                className="btn btn-primary rounded-pill px-4"
-                                onClick={abrirEditar}
-                            >
+                            <button onClick={abrirEditar}>
                                 Editar proyecto
                             </button>
                         )}
-                        <button
-                            className="btn btn-dark rounded-pill px-4"
-                            onClick={() => navigate("/proyectos")}
-                        >
+                        <button onClick={() => navigate("/proyectos")}>
                             Volver
                         </button>
                     </div>
@@ -297,204 +275,139 @@ function DetalleProyecto() {
                     </div>
                 )}
 
-                <div className="row g-4">
+                <div className="detail-grid">
                     {/* DATOS GENERALES */}
-                    <div className="col-md-4">
-                        <div className="card border-0 shadow-sm h-100">
-                            <div
-                                className="card-header text-white fw-bold"
-                                style={{
-                                    background: "#2563EB",
-                                    borderTopLeftRadius: "10px",
-                                    borderTopRightRadius: "10px",
-                                }}
-                            >
-                                Datos generales
-                            </div>
+                    <div className="detail-card">
+                        <h2>Datos generales</h2>
 
-                            <div className="card-body">
-                                <p>
-                                    <strong>ID Proyecto:</strong>{" "}
-                                    <small className="text-muted">{proyecto.id_proyecto}</small>
-                                </p>
-                                <hr />
-
-                                <p>
-                                    <strong>Cliente:</strong> {proyecto.nombre_cliente}
-                                </p>
-                                <hr />
-
-                                <p>
-                                    <strong>Teléfono:</strong>{" "}
-                                    {proyecto.telefono_cliente || "Sin definir"}
-                                </p>
-                                <hr />
-
-                                <p>
-                                    <strong>Dirección:</strong>{" "}
-                                    {proyecto.direccion_cliente || "Sin definir"}
-                                </p>
-                                <hr />
-
-                                <p>
-                                    <strong>Tipo de servicio:</strong>{" "}
-                                    {proyecto.tipo_proyecto || "Sin especificar"}
-                                </p>
-                                <hr />
-
-                                <p>
-                                    <strong>Plantilla aplicada:</strong>{" "}
-                                    {proyecto.plantilla
-                                        ? proyecto.plantilla.nombre_servicio
-                                        : "Sin plantilla"}
-                                </p>
-                                <hr />
-
-                                <p>
-                                    <strong>Fecha inicio:</strong>{" "}
-                                    {formatearFecha(proyecto.fecha_inicio)}
-                                </p>
-                                <hr />
-
-                                <p>
-                                    <strong>Fecha término máxima:</strong>{" "}
-                                    {formatearFecha(proyecto.fecha_termino_maximo)}
-                                </p>
-                                <hr />
-
-                                <p className="mb-0">
-                                    <strong>Observaciones:</strong>
-                                    <br />
-                                    {proyecto.observaciones ? (
-                                        <span className="text-muted">{proyecto.observaciones}</span>
-                                    ) : (
-                                        <span className="text-muted fst-italic">Sin observaciones</span>
-                                    )}
-                                </p>
-                            </div>
+                        <div className="detail-row">
+                            <strong>ID Proyecto:</strong>
+                            <span style={{ fontSize: "0.85rem" }}>{proyecto.id_proyecto}</span>
                         </div>
+                        <div className="detail-row">
+                            <strong>Cliente:</strong>
+                            <span>{proyecto.nombre_cliente}</span>
+                        </div>
+                        <div className="detail-row">
+                            <strong>Teléfono:</strong>
+                            <span>{proyecto.telefono_cliente || "Sin definir"}</span>
+                        </div>
+                        <div className="detail-row">
+                            <strong>Dirección:</strong>
+                            <span>{proyecto.direccion_cliente || "Sin definir"}</span>
+                        </div>
+                        <div className="detail-row">
+                            <strong>Tipo de servicio:</strong>
+                            <span>{proyecto.tipo_proyecto || "Sin especificar"}</span>
+                        </div>
+                        <div className="detail-row">
+                            <strong>Plantilla:</strong>
+                            <span>
+                                {proyecto.plantilla
+                                    ? proyecto.plantilla.nombre_servicio
+                                    : "Sin plantilla"}
+                            </span>
+                        </div>
+                        <div className="detail-row">
+                            <strong>Fecha inicio:</strong>
+                            <span>{formatearFecha(proyecto.fecha_inicio)}</span>
+                        </div>
+                        <div className="detail-row">
+                            <strong>Fecha término:</strong>
+                            <span>{formatearFecha(proyecto.fecha_termino_maximo)}</span>
+                        </div>
+                        <div className="detail-row">
+                            <strong>Estado:</strong>
+                            <span className={claseEstado(proyecto.estado)}>
+                                {formatearEstado(proyecto.estado)}
+                            </span>
+                        </div>
+
+                        <h3>Observaciones</h3>
+                        {proyecto.observaciones ? (
+                            <p>{proyecto.observaciones}</p>
+                        ) : (
+                            <p style={{ fontStyle: "italic", color: "#888" }}>
+                                Sin observaciones
+                            </p>
+                        )}
                     </div>
 
                     {/* COSTOS Y RECURSOS */}
-                    <div className="col-md-4">
-                        <div className="card border-0 shadow-sm h-100">
-                            <div
-                                className="card-header text-white fw-bold"
-                                style={{
-                                    background: "#2563EB",
-                                    borderTopLeftRadius: "10px",
-                                    borderTopRightRadius: "10px",
-                                }}
-                            >
-                                Costos y recursos
-                            </div>
+                    <div className="detail-card">
+                        <h2>Costos y recursos</h2>
 
-                            <div className="card-body">
-                                <p>
-                                    <strong>Presupuesto estimado:</strong>{" "}
-                                    {formatearPrecio(proyecto.presupuesto_estimado)}
-                                </p>
-                                <hr />
-
-                                <p>
-                                    <strong>Costo de materiales (interno):</strong>{" "}
-                                    {formatearPrecio(costoMateriales)}
-                                </p>
-                                <hr />
-
-                                <p>
-                                    <strong>Presupuesto final:</strong>{" "}
-                                    {formatearPrecio(proyecto.presupuesto_final)}
-                                </p>
-                                <hr />
-
-                                <p>
-                                    <strong>Total materiales:</strong> {materiales.length}
-                                </p>
-                                <hr />
-
-                                <p className={materialesConFalta > 0 ? "text-warning fw-bold" : ""}>
-                                    <strong>Recursos pendientes:</strong> {materialesConFalta}
-                                </p>
-
-                                {proyecto.estado === "en_curso" && (
-                                    <div className="alert alert-info mt-3 mb-0 small">
-                                        Proyecto en ejecución. Los materiales ya fueron descontados del inventario.
-                                    </div>
-                                )}
-
-                                {proyecto.estado === "pendiente" && (
-                                    <div className="alert alert-warning mt-3 mb-0 small">
-                                        Proyecto pendiente. Stock aún no descontado.
-                                    </div>
-                                )}
-
-                                {proyecto.estado === "cancelado" && (
-                                    <div className="alert alert-secondary mt-3 mb-0 small">
-                                        Proyecto cancelado. Materiales devueltos al inventario.
-                                    </div>
-                                )}
-                            </div>
+                        <div className="detail-row">
+                            <strong>Presupuesto estimado:</strong>
+                            <span>{formatearPrecio(proyecto.presupuesto_estimado)}</span>
                         </div>
+                        <div className="detail-row">
+                            <strong>Costo materiales (interno):</strong>
+                            <span>{formatearPrecio(costoMateriales)}</span>
+                        </div>
+                        <div className="detail-row">
+                            <strong>Presupuesto final:</strong>
+                            <span>{formatearPrecio(proyecto.presupuesto_final)}</span>
+                        </div>
+                        <div className="detail-row">
+                            <strong>Total materiales:</strong>
+                            <span>{materiales.length}</span>
+                        </div>
+                        <div className="detail-row">
+                            <strong>Recursos pendientes:</strong>
+                            <span className={materialesConFalta > 0 ? "text-warning" : ""}>
+                                {materialesConFalta}
+                            </span>
+                        </div>
+
+                        {proyecto.estado === "en_curso" && (
+                            <div className="alert alert-info">
+                                Proyecto en ejecución. Los materiales ya fueron descontados del inventario.
+                            </div>
+                        )}
+                        {proyecto.estado === "pendiente" && (
+                            <div className="alert alert-warning">
+                                Proyecto pendiente. Stock aún no descontado.
+                            </div>
+                        )}
+                        {proyecto.estado === "cancelado" && (
+                            <div className="alert alert-secondary">
+                                Proyecto cancelado. Materiales devueltos al inventario.
+                            </div>
+                        )}
                     </div>
 
-                    {/* MATERIALES PLANEADOS */}
-                    <div className="col-md-4">
-                        <div className="card border-0 shadow-sm h-100">
-                            <div
-                                className="card-header text-white fw-bold"
-                                style={{
-                                    background: "#2563EB",
-                                    borderTopLeftRadius: "10px",
-                                    borderTopRightRadius: "10px",
-                                }}
-                            >
-                                Materiales del proyecto
-                            </div>
+                    {/* MATERIALES */}
+                    <div className="detail-card">
+                        <h2>Materiales del proyecto</h2>
 
-                            <div className="card-body">
-                                {materiales.length === 0 ? (
-                                    <p className="text-muted">
-                                        No hay materiales registrados para este proyecto.
-                                    </p>
-                                ) : (
-                                    <ul className="list-unstyled mb-0">
-                                        {materiales.map((m, index) => (
-                                            <li
-                                                key={m.material_id}
-                                                className={
-                                                    index < materiales.length - 1 ? "mb-3 pb-3 border-bottom" : ""
-                                                }
-                                            >
-                                                <div className="d-flex justify-content-between">
-                                                    <strong>{m.nombre_material}</strong>
-                                                    <span className="fw-bold">
-                                                        {Number(m.cantidad_planeada)}
-                                                    </span>
-                                                </div>
-                                                <div className="d-flex justify-content-between small text-muted">
-                                                    <span>
-                                                        {formatearPrecio(m.precio_unitario)} c/u
-                                                    </span>
-                                                    <span>
-                                                        Subtotal:{" "}
-                                                        {formatearPrecio(
-                                                            Number(m.precio_unitario) *
-                                                                Number(m.cantidad_planeada)
-                                                        )}
-                                                    </span>
-                                                </div>
-                                                {!m.suficiente_stock && (
-                                                    <div className="small text-warning mt-1">
-                                                        Stock insuficiente (disponible: {m.stock_actual})
-                                                    </div>
+                        {materiales.length === 0 ? (
+                            <p>No hay materiales registrados para este proyecto.</p>
+                        ) : (
+                            <ul>
+                                {materiales.map((m) => (
+                                    <li key={m.material_id}>
+                                        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold" }}>
+                                            <span>{m.nombre_material}</span>
+                                            <span>{Number(m.cantidad_planeada)}</span>
+                                        </div>
+                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "#666" }}>
+                                            <span>{formatearPrecio(m.precio_unitario)} c/u</span>
+                                            <span>
+                                                Subtotal: {formatearPrecio(
+                                                    Number(m.precio_unitario) * Number(m.cantidad_planeada)
                                                 )}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </div>
-                        </div>
+                                            </span>
+                                        </div>
+                                        {!m.suficiente_stock && (
+                                            <div style={{ fontSize: "0.8rem", color: "#d97706", marginTop: "0.25rem" }}>
+                                                Stock insuficiente (disponible: {m.stock_actual})
+                                            </div>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
                     </div>
                 </div>
 

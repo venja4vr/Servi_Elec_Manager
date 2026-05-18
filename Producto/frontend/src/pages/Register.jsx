@@ -15,7 +15,6 @@ function Register() {
     const [password, setPassword] = useState("");
     const [confirmarPassword, setConfirmarPassword] = useState("");
 
-    // Errores por campo
     const [errorNombre, setErrorNombre] = useState("");
     const [errorCorreo, setErrorCorreo] = useState("");
     const [errorPassword, setErrorPassword] = useState("");
@@ -25,7 +24,6 @@ function Register() {
     const [exito, setExito] = useState(false);
     const [cargando, setCargando] = useState(false);
 
-    // ====== VALIDADORES ======
     const validarNombre = (valor) => {
         const v = valor.trim();
         if (!v) return "El nombre es obligatorio";
@@ -56,24 +54,20 @@ function Register() {
         return "";
     };
 
-    // ====== HANDLERS DE BLUR ======
     const handleBlurNombre = () => setErrorNombre(validarNombre(nombre));
     const handleBlurCorreo = () => setErrorCorreo(validarCorreo(correo));
     const handleBlurPassword = () => {
         setErrorPassword(validarPassword(password));
-        // Si ya escribió confirmar, revalida también
         if (confirmarPassword) {
             setErrorConfirmar(validarConfirmar(confirmarPassword, password));
         }
     };
     const handleBlurConfirmar = () => setErrorConfirmar(validarConfirmar(confirmarPassword));
 
-    // ====== SUBMIT ======
     const handleRegister = async (e) => {
         e.preventDefault();
         setErrorGeneral("");
 
-        // Validar todo
         const errN = validarNombre(nombre);
         const errC = validarCorreo(correo);
         const errP = validarPassword(password);
@@ -100,19 +94,19 @@ function Register() {
     if (exito) {
         return (
             <AuthLayout>
-                <div className="card shadow-sm rounded-4 p-4" style={{ width: "420px" }}>
-                    <div className="text-center mb-4">
-                        <div className="mb-3" style={{ fontSize: "3rem" }}>✅</div>
-                        <h2 className="fw-bold">¡Cuenta creada!</h2>
+                <div className="auth-card">
+                    <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+                        <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>✅</div>
+                        <h2>¡Cuenta creada!</h2>
                     </div>
-                    <div className="alert alert-info text-center" role="alert">
+                    <div className="alert alert-info" role="alert" style={{ textAlign: "center" }}>
                         Tu cuenta fue registrada correctamente y está <strong>pendiente de aprobación</strong> por el administrador.
                         <br /><br />
                         Recibirás acceso al sistema una vez que tu cuenta sea aprobada.
                     </div>
                     <button
                         type="button"
-                        className="btn btn-primary w-100"
+                        className="auth-main-btn"
                         onClick={() => navigate("/")}
                     >
                         Volver al login
@@ -124,13 +118,11 @@ function Register() {
 
     return (
         <AuthLayout>
-            <div className="card shadow-sm rounded-4 p-4" style={{ width: "420px" }}>
-                <div className="text-center mb-4">
-                    <h1 className="fw-bold">Crear cuenta</h1>
-                    <p className="text-muted mb-0">
-                        Registra un nuevo usuario en ServiElec Manager
-                    </p>
-                </div>
+            <div className="auth-card">
+                <h2>Crear cuenta</h2>
+                <p className="auth-subtitle">
+                    Registra un nuevo usuario en ServiElec Manager
+                </p>
 
                 {errorGeneral && (
                     <div className="alert alert-danger" role="alert">
@@ -139,84 +131,95 @@ function Register() {
                 )}
 
                 <form onSubmit={handleRegister} noValidate>
-                    <div className="mb-3">
-                        <label className="form-label">Nombre</label>
-                        <input
-                            type="text"
-                            className={`form-control ${errorNombre ? "is-invalid" : ""}`}
-                            placeholder="Ingresa tu nombre"
-                            value={nombre}
-                            onChange={(e) => setNombre(e.target.value)}
-                            onBlur={handleBlurNombre}
-                            maxLength={50}
-                        />
+                    <div className="auth-field">
+                        <label>Nombre</label>
+                        <div className="auth-input-group">
+                            <input
+                                type="text"
+                                placeholder="Ingresa tu nombre"
+                                maxLength={50}
+                                value={nombre}
+                                onChange={(e) => setNombre(e.target.value)}
+                                onBlur={handleBlurNombre}
+                                className={errorNombre ? "is-invalid" : ""}
+                            />
+                        </div>
                         {errorNombre && (
-                            <div className="invalid-feedback">{errorNombre}</div>
+                            <small className="auth-error">{errorNombre}</small>
                         )}
                     </div>
-                    <div className="mb-3">
-                        <label className="form-label">Correo</label>
-                        <input
-                            type="email"
-                            className={`form-control ${errorCorreo ? "is-invalid" : ""}`}
-                            placeholder="ejemplo@correo.com"
-                            value={correo}
-                            onChange={(e) => setCorreo(e.target.value)}
-                            onBlur={handleBlurCorreo}
-                            maxLength={40}
-                        />
+
+                    <div className="auth-field">
+                        <label>Correo</label>
+                        <div className="auth-input-group">
+                            <input
+                                type="email"
+                                placeholder="ejemplo@correo.com"
+                                maxLength={40}
+                                value={correo}
+                                onChange={(e) => setCorreo(e.target.value)}
+                                onBlur={handleBlurCorreo}
+                                className={errorCorreo ? "is-invalid" : ""}
+                            />
+                        </div>
                         {errorCorreo && (
-                            <div className="invalid-feedback">{errorCorreo}</div>
+                            <small className="auth-error">{errorCorreo}</small>
                         )}
                     </div>
-                    <div className="mb-3">
-                        <label className="form-label">Contraseña</label>
-                        <input
-                            type="password"
-                            className={`form-control ${errorPassword ? "is-invalid" : ""}`}
-                            placeholder="Crea una contraseña"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            onBlur={handleBlurPassword}
-                        />
+
+                    <div className="auth-field">
+                        <label>Contraseña</label>
+                        <div className="auth-input-group">
+                            <input
+                                type="password"
+                                placeholder="Crea una contraseña"
+                                maxLength={40}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                onBlur={handleBlurPassword}
+                                className={errorPassword ? "is-invalid" : ""}
+                            />
+                        </div>
                         {errorPassword ? (
-                            <div className="invalid-feedback">{errorPassword}</div>
+                            <small className="auth-error">{errorPassword}</small>
                         ) : (
-                            <small className="text-muted">
+                            <small className="auth-hint">
                                 Mínimo 8 caracteres, con mayúscula, número y carácter especial.
                             </small>
                         )}
                     </div>
-                    <div className="mb-4">
-                        <label className="form-label">Confirmar contraseña</label>
-                        <input
-                            type="password"
-                            className={`form-control ${errorConfirmar ? "is-invalid" : ""}`}
-                            placeholder="Repite la contraseña"
-                            value={confirmarPassword}
-                            onChange={(e) => setConfirmarPassword(e.target.value)}
-                            onBlur={handleBlurConfirmar}
-                        />
+
+                    <div className="auth-field">
+                        <label>Confirmar contraseña</label>
+                        <div className="auth-input-group">
+                            <input
+                                type="password"
+                                placeholder="Repite la contraseña"
+                                maxLength={40}
+                                value={confirmarPassword}
+                                onChange={(e) => setConfirmarPassword(e.target.value)}
+                                onBlur={handleBlurConfirmar}
+                                className={errorConfirmar ? "is-invalid" : ""}
+                            />
+                        </div>
                         {errorConfirmar && (
-                            <div className="invalid-feedback">{errorConfirmar}</div>
+                            <small className="auth-error">{errorConfirmar}</small>
                         )}
                     </div>
+
                     <button
                         type="submit"
-                        className="btn btn-primary w-100"
+                        className="auth-main-btn"
                         disabled={cargando}
                     >
                         {cargando ? "Creando cuenta..." : "Crear cuenta"}
                     </button>
                 </form>
-                <div className="text-center mt-4">
-                    <p className="text-muted mb-1">¿Ya tienes cuenta?</p>
-                    <button
-                        type="button"
-                        className="btn btn-link"
-                        onClick={() => navigate("/")}
-                    >
-                        Iniciar Sesión
+
+                <div className="auth-footer">
+                    <span>¿Ya tienes cuenta?</span>
+                    <button type="button" onClick={() => navigate("/")}>
+                        Iniciar sesión
                     </button>
                 </div>
             </div>

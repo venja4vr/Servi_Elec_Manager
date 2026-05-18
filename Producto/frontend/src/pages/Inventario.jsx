@@ -85,10 +85,18 @@ function Inventario() {
         );
     });
 
-    const getBadgeStock = (material) => {
-        if (material.stock_actual === 0) return "bg-danger";
-        if (material.stock_actual <= material.stock_critico) return "bg-warning text-dark";
-        return "bg-success";
+    const claseStock = (material) => {
+        if (material.stock_actual === 0) return "stock-badge danger";
+        if (material.stock_actual <= material.stock_critico) return "stock-badge warning";
+        return "stock-badge";
+    };
+
+    // Iniciales del material para la "imagen" (primeras letras del nombre)
+    const inicialesMaterial = (nombre) => {
+        if (!nombre) return "??";
+        const palabras = nombre.trim().split(" ");
+        if (palabras.length === 1) return palabras[0].substring(0, 3).toUpperCase();
+        return (palabras[0][0] + palabras[1][0] + (palabras[2]?.[0] || "")).toUpperCase();
     };
 
     // ====== VALIDADORES DEL MODAL EDITAR ======
@@ -102,7 +110,6 @@ function Inventario() {
     // EDITAR
     const abrirEditar = (material) => {
         setMaterialEditando({ ...material });
-        // Limpiar errores anteriores al abrir
         setErrEdNombre("");
         setErrEdDescripcion("");
         setErrEdStockActual("");
@@ -119,7 +126,6 @@ function Inventario() {
     const confirmarEditar = async () => {
         setError("");
 
-        // Validar todo
         const errN = vEdNombre(materialEditando.nombre_material);
         const errD = vEdDescripcion(materialEditando.descripcion);
         const errSA = vEdStockActual(materialEditando.stock_actual);
@@ -181,42 +187,34 @@ function Inventario() {
 
     return (
         <AppLayout>
-            <div className="container-fluid">
-                <div className="d-flex justify-content-between align-items-center mb-4">
+            <div className="inventory-page">
+                <div className="inventory-header">
                     <div>
-                        <h2 className="fw-bold mb-1">Inventario</h2>
-                        <p className="text-muted mb-0">
-                            Gestión de recursos disponibles para los servicios eléctricos.
-                        </p>
+                        <h1>Inventario</h1>
+                        <p>Gestión de recursos disponibles para los servicios eléctricos.</p>
                     </div>
 
-                    <div className="d-flex gap-2">
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
                         <button
-                            className="btn btn-outline-primary px-3"
                             onClick={() => navigate("/buscador")}
                             title="Buscar productos en tiendas y agregarlos a recursos pendientes"
                         >
                             Comprar más en tiendas
                         </button>
-                        <button
-                            className="btn btn-success px-4"
-                            onClick={() => navigate("/agregar-producto")}
-                        >
+                        <button onClick={() => navigate("/agregar-producto")}>
                             Agregar recurso
                         </button>
                     </div>
                 </div>
 
-                <div className="row align-items-center mb-4">
-                    <div className="col-md-8">
-                        <input
-                            type="text"
-                            className="form-control"
-                            placeholder="Buscar recurso por nombre, código o descripción"
-                            value={busqueda}
-                            onChange={(e) => setBusqueda(e.target.value)}
-                        />
-                    </div>
+                <div className="inventory-search">
+                    <input
+                        type="text"
+                        placeholder="Buscar recurso por nombre, código o descripción..."
+                        maxLength={150}
+                        value={busqueda}
+                        onChange={(e) => setBusqueda(e.target.value)}
+                    />
                 </div>
 
                 {error && (
@@ -230,88 +228,81 @@ function Inventario() {
                     </div>
                 )}
 
-                <div className="card border-0 shadow-sm rounded-4">
-                    <div className="table-responsive">
-                        <table className="table align-middle mb-0">
-                            <thead className="bg-light">
-                                <tr>
-                                    <th>Código</th>
-                                    <th>Nombre</th>
-                                    <th>Categoría</th>
-                                    <th className="text-end">Precio</th>
-                                    <th className="text-center">Stock</th>
-                                    <th className="text-center">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {cargando ? (
-                                    <tr>
-                                        <td colSpan="6" className="text-center py-5 text-muted">
-                                            Cargando inventario...
-                                        </td>
-                                    </tr>
-                                ) : materialesFiltrados.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="6" className="text-center py-5 text-muted">
-                                            {busqueda
-                                                ? "No se encontraron recursos con esos filtros."
-                                                : "No hay recursos en el inventario."}
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    materialesFiltrados.map((material) => (
-                                        <tr key={material.id_material}>
-                                            <td className="small text-muted">{material.id_material}</td>
-                                            <td>
-                                                <strong>{material.nombre_material}</strong>
-                                                {material.descripcion && (
-                                                    <p className="text-muted mb-0 small">
-                                                        {material.descripcion.length > 80
-                                                            ? material.descripcion.substring(0, 80) + "..."
-                                                            : material.descripcion}
-                                                    </p>
-                                                )}
-                                            </td>
-                                            <td>
-                                                <span className="badge bg-secondary-subtle text-dark">
-                                                    {obtenerNombreCategoria(material.categoria_id)}
-                                                </span>
-                                            </td>
-                                            <td className="text-end fw-bold">
-                                                {formatearPrecio(material.precio_unitario)}
-                                            </td>
-                                            <td className="text-center">
-                                                <span className={`badge ${getBadgeStock(material)}`}>
-                                                    {material.stock_actual}
-                                                </span>
-                                                {material.stock_actual <= material.stock_critico && material.stock_actual > 0 && (
-                                                    <div className="small text-warning mt-1">
-                                                        Stock crítico
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td className="text-center">
-                                                <div className="d-flex gap-2 justify-content-center">
-                                                    <button
-                                                        className="btn btn-primary btn-sm"
-                                                        onClick={() => abrirEditar(material)}
-                                                    >
-                                                        Editar
-                                                    </button>
-                                                    <button
-                                                        className="btn btn-danger btn-sm"
-                                                        onClick={() => abrirEliminar(material)}
-                                                    >
-                                                        Eliminar
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                <div className="inventory-table-card">
+                    <div className="inventory-table-head">
+                        <span>Imagen</span>
+                        <span>Código</span>
+                        <span>Nombre</span>
+                        <span>Precio</span>
+                        <span>Categoría</span>
+                        <span>Stock</span>
+                        <span>Acciones</span>
                     </div>
+
+                    {cargando ? (
+                        <div style={{ textAlign: "center", padding: "3rem" }}>
+                            Cargando inventario...
+                        </div>
+                    ) : materialesFiltrados.length === 0 ? (
+                        <div style={{ textAlign: "center", padding: "3rem" }}>
+                            {busqueda
+                                ? "No se encontraron recursos con esos filtros."
+                                : "No hay recursos en el inventario."}
+                        </div>
+                    ) : (
+                        materialesFiltrados.map((material) => (
+                            <div className="inventory-row" key={material.id_material}>
+                                <div className="inventory-image">
+                                    {inicialesMaterial(material.nombre_material)}
+                                </div>
+
+                                <div style={{ fontSize: "0.85rem", color: "#666" }}>
+                                    {material.id_material}
+                                </div>
+
+                                <div>
+                                    <strong>{material.nombre_material}</strong>
+                                    {material.descripcion && (
+                                        <p>
+                                            {material.descripcion.length > 80
+                                                ? material.descripcion.substring(0, 80) + "..."
+                                                : material.descripcion}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div><strong>{formatearPrecio(material.precio_unitario)}</strong></div>
+
+                                <div>{obtenerNombreCategoria(material.categoria_id)}</div>
+
+                                <div>
+                                    <span className={claseStock(material)}>
+                                        {material.stock_actual}
+                                    </span>
+                                    {material.stock_actual <= material.stock_critico && material.stock_actual > 0 && (
+                                        <p style={{ fontSize: "0.75rem", color: "#d97706", margin: "0.25rem 0 0" }}>
+                                            Stock crítico
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="inventory-actions">
+                                    <button
+                                        className="edit-btn"
+                                        onClick={() => abrirEditar(material)}
+                                    >
+                                        Editar
+                                    </button>
+                                    <button
+                                        className="delete-btn"
+                                        onClick={() => abrirEliminar(material)}
+                                    >
+                                        Eliminar
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
 
                 {/* MODAL EDITAR */}
@@ -339,9 +330,7 @@ function Inventario() {
                                                 type="text"
                                                 className={`form-control ${errEdNombre ? "is-invalid" : ""}`}
                                                 value={materialEditando.nombre_material || ""}
-                                                onChange={(e) =>
-                                                    handleCambioCampo("nombre_material", e.target.value)
-                                                }
+                                                onChange={(e) => handleCambioCampo("nombre_material", e.target.value)}
                                                 onBlur={() => setErrEdNombre(vEdNombre(materialEditando.nombre_material))}
                                                 maxLength={50}
                                             />
@@ -354,9 +343,7 @@ function Inventario() {
                                             <select
                                                 className={`form-select ${errEdCategoria ? "is-invalid" : ""}`}
                                                 value={materialEditando.categoria_id || ""}
-                                                onChange={(e) =>
-                                                    handleCambioCampo("categoria_id", e.target.value)
-                                                }
+                                                onChange={(e) => handleCambioCampo("categoria_id", e.target.value)}
                                                 onBlur={() => setErrEdCategoria(vEdCategoria(materialEditando.categoria_id))}
                                             >
                                                 <option value="">Seleccionar categoría</option>
@@ -378,9 +365,7 @@ function Inventario() {
                                                 min="0"
                                                 step="0.01"
                                                 value={materialEditando.precio_unitario ?? ""}
-                                                onChange={(e) =>
-                                                    handleCambioCampo("precio_unitario", e.target.value)
-                                                }
+                                                onChange={(e) => handleCambioCampo("precio_unitario", e.target.value)}
                                                 onBlur={() => setErrEdPrecio(vEdPrecio(materialEditando.precio_unitario))}
                                             />
                                             {errEdPrecio && (
@@ -395,9 +380,7 @@ function Inventario() {
                                                 min="0"
                                                 step="1"
                                                 value={materialEditando.stock_actual ?? ""}
-                                                onChange={(e) =>
-                                                    handleCambioCampo("stock_actual", e.target.value)
-                                                }
+                                                onChange={(e) => handleCambioCampo("stock_actual", e.target.value)}
                                                 onBlur={() => setErrEdStockActual(vEdStockActual(materialEditando.stock_actual))}
                                             />
                                             {errEdStockActual && (
@@ -412,9 +395,7 @@ function Inventario() {
                                                 min="0"
                                                 step="1"
                                                 value={materialEditando.stock_critico ?? ""}
-                                                onChange={(e) =>
-                                                    handleCambioCampo("stock_critico", e.target.value)
-                                                }
+                                                onChange={(e) => handleCambioCampo("stock_critico", e.target.value)}
                                                 onBlur={() => setErrEdStockCritico(vEdStockCritico(materialEditando.stock_critico))}
                                             />
                                             {errEdStockCritico && (
@@ -427,9 +408,7 @@ function Inventario() {
                                                 className={`form-control ${errEdDescripcion ? "is-invalid" : ""}`}
                                                 rows="3"
                                                 value={materialEditando.descripcion || ""}
-                                                onChange={(e) =>
-                                                    handleCambioCampo("descripcion", e.target.value)
-                                                }
+                                                onChange={(e) => handleCambioCampo("descripcion", e.target.value)}
                                                 onBlur={() => setErrEdDescripcion(vEdDescripcion(materialEditando.descripcion))}
                                                 maxLength={250}
                                             ></textarea>
