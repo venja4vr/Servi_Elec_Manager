@@ -91,18 +91,19 @@ function DetalleProyecto() {
 
     // EDITAR PROYECTO
     const abrirEditar = () => {
-        setDatosEdicion({
-            nombre_proyecto: proyecto.nombre_proyecto || "",
-            tipo_proyecto: proyecto.tipo_proyecto || "",
-            nombre_cliente: proyecto.nombre_cliente || "",
-            telefono_cliente: proyecto.telefono_cliente || "",
-            direccion_cliente: proyecto.direccion_cliente || "",
-            fecha_inicio: proyecto.fecha_inicio || "",
-            fecha_termino_maximo: proyecto.fecha_termino_maximo || "",
-            presupuesto_estimado: proyecto.presupuesto_estimado || "",
-            presupuesto_final: proyecto.presupuesto_final || "",
-        });
-        setMostrarEditar(true);
+    setDatosEdicion({
+        nombre_proyecto: proyecto.nombre_proyecto || "",
+        tipo_proyecto: proyecto.tipo_proyecto || "",
+        nombre_cliente: proyecto.nombre_cliente || "",
+        telefono_cliente: proyecto.telefono_cliente || "",
+        direccion_cliente: proyecto.direccion_cliente || "",
+        fecha_inicio: proyecto.fecha_inicio || "",
+        fecha_termino_maximo: proyecto.fecha_termino_maximo || "",
+        presupuesto_estimado: proyecto.presupuesto_estimado || "",
+        presupuesto_final: proyecto.presupuesto_final || "",
+        observaciones: proyecto.observaciones || "",
+    });
+    setMostrarEditar(true);
     };
 
     const handleCambioCampo = (campo, valor) => {
@@ -132,6 +133,7 @@ function DetalleProyecto() {
                 presupuesto_final: datosEdicion.presupuesto_final
                     ? Number(datosEdicion.presupuesto_final)
                     : null,
+                observaciones: datosEdicion.observaciones?.trim() || null,
             };
             await actualizarProyecto(id, payload);
             setMostrarEditar(false);
@@ -285,9 +287,20 @@ function DetalleProyecto() {
                                 </p>
                                 <hr />
 
-                                <p className="mb-0">
+                                <p>
                                     <strong>Fecha término máxima:</strong>{" "}
                                     {formatearFecha(proyecto.fecha_termino_maximo)}
+                                </p>
+                                <hr />
+
+                                <p className="mb-0">
+                                    <strong>Observaciones:</strong>
+                                    <br />
+                                    {proyecto.observaciones ? (
+                                        <span className="text-muted">{proyecto.observaciones}</span>
+                                    ) : (
+                                        <span className="text-muted fst-italic">Sin observaciones</span>
+                                    )}
                                 </p>
                             </div>
                         </div>
@@ -542,6 +555,23 @@ function DetalleProyecto() {
                                             />
                                             <small className="text-muted">
                                                 Costo final una vez completado el servicio
+                                            </small>
+                                        </div>
+
+                                        <div className="col-md-12">
+                                            <label className="form-label">Observaciones</label>
+                                            <textarea
+                                                className="form-control"
+                                                rows="3"
+                                                value={datosEdicion.observaciones || ""}
+                                                onChange={(e) =>
+                                                    handleCambioCampo("observaciones", e.target.value)
+                                                }
+                                                maxLength={500}
+                                                placeholder="Notas adicionales sobre el proyecto"
+                                            ></textarea>
+                                            <small className="text-muted">
+                                                Máximo 500 caracteres
                                             </small>
                                         </div>
                                     </div>

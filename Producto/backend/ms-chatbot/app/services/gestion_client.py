@@ -1,6 +1,8 @@
 import httpx
 import os
 from typing import Optional, List, Dict, Any
+from datetime import datetime
+
 
 def _parsear_fecha(texto: Optional[str]) -> Optional[str]:
     """
@@ -18,16 +20,14 @@ def _parsear_fecha(texto: Optional[str]) -> Optional[str]:
     if any(p in texto for p in no_fechas):
         return None
 
-    from datetime import datetime
-
     # Formatos comunes que intentaremos parsear
     formatos = [
-        "%d/%m/%Y",     # 25/12/2026
-        "%d-%m-%Y",     # 25-12-2026
-        "%d/%m/%y",     # 25/12/26
-        "%Y-%m-%d",     # 2026-12-25
+        "%d/%m/%Y",        # 25/12/2026
+        "%d-%m-%Y",        # 25-12-2026
+        "%d/%m/%y",        # 25/12/26
+        "%Y-%m-%d",        # 2026-12-25
         "%d de %B de %Y",  # 25 de diciembre de 2026
-        "%d de %B",     # 25 de diciembre (asume año actual)
+        "%d de %B",        # 25 de diciembre (asume año actual)
     ]
 
     for fmt in formatos:
@@ -43,6 +43,26 @@ def _parsear_fecha(texto: Optional[str]) -> Optional[str]:
     # Si no pudimos parsearlo, devolver None (no romper, solo ignorar)
     print(f"[GESTION] No se pudo parsear fecha: '{texto}'")
     return None
+
+
+def _limpiar_observaciones(texto: Optional[str]) -> Optional[str]:
+    """
+    Si el cliente respondió 'ninguna', 'no', 'nada' u algo similar,
+    devolvemos None en vez del texto literal.
+    Si el texto es válido, lo recortamos a 500 caracteres (límite de la BD).
+    """
+    if not texto:
+        return None
+
+    t = texto.strip().lower()
+    no_observaciones = ["ninguna", "ninguno", "nada", "no", "sin observaciones", "sin obs", "n/a", "no tengo"]
+
+    if t in no_observaciones:
+        return None
+
+    # Recortar a 500 chars por si el cliente escribió mucho
+    return texto.strip()[:500]
+
 
 def _headers() -> dict:
     token = os.getenv("MS_GESTION_TOKEN", "")
@@ -86,8 +106,9 @@ def crear_proyecto(
     precio_estimado: Optional[float] = None,
 ) -> Optional[Dict[str, Any]]:
 
-    # Procesar fecha_preferida: si el cliente escribió "sin preferencia", null. Si escribió fecha, intentamos parsearla.
+    # Procesar fecha_preferida y observaciones
     fecha_inicio_final = _parsear_fecha(fecha_preferida)
+    observaciones_final = _limpiar_observaciones(observaciones)
 
     # Primero obtener los materiales de la plantilla
     materiales = []
@@ -118,6 +139,7 @@ def crear_proyecto(
             "fecha_inicio": fecha_inicio_final,
             "presupuesto_estimado": precio_estimado,
             "plantilla_id": plantilla_id,
+            "observaciones": observaciones_final,
             "materiales": materiales,
         }
     else:
@@ -132,6 +154,7 @@ def crear_proyecto(
             "estado": "pendiente",
             "presupuesto_estimado": precio_estimado,
             "plantilla_id": plantilla_id,
+            "observaciones": observaciones_final,
         }
 
     try:

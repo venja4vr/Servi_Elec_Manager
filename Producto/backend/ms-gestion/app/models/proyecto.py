@@ -20,5 +20,6 @@ class Proyecto(Base):
     presupuesto_final     = Column(Numeric(9, 2), nullable=True)
     fecha_termino_maximo  = Column(Date, nullable=True)
     plantilla_id          = Column(String(20), ForeignKey("plantilla.id_plantilla"), nullable=True)
+    observaciones         = Column(String(500), nullable=True)
 
     plantilla = relationship("Plantilla", backref="proyectos")

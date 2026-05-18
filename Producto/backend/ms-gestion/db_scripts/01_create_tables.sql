@@ -87,6 +87,7 @@ CREATE TABLE proyecto (
     presupuesto_final     NUMERIC(9, 2) CHECK (presupuesto_final >= 0),
     fecha_termino_maximo  DATE,
     plantilla_id          VARCHAR(20),
+    observaciones         VARCHAR(500),
     CONSTRAINT fk_proyecto_plantilla
         FOREIGN KEY (plantilla_id)
         REFERENCES plantilla (id_plantilla)

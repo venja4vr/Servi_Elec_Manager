@@ -18,6 +18,7 @@ function NuevoProyecto() {
     const [direccionCliente, setDireccionCliente] = useState("");
     const [presupuestoEstimado, setPresupuestoEstimado] = useState("");
     const [fechaTermino, setFechaTermino] = useState("");
+    const [observaciones, setObservaciones] = useState("");
 
     // Plantilla y materiales
     const [plantillas, setPlantillas] = useState([]);
@@ -114,19 +115,20 @@ function NuevoProyecto() {
         setGuardando(true);
         try {
             const payload = {
-                nombre_proyecto: nombreProyecto,
-                tipo_proyecto: tipoProyecto || null,
-                nombre_cliente: nombreCliente,
-                telefono_cliente: telefonoCliente || null,
-                direccion_cliente: direccionCliente || null,
-                presupuesto_estimado: presupuestoEstimado ? Number(presupuestoEstimado) : null,
-                fecha_termino_maximo: fechaTermino || null,
-                plantilla_id: plantillaSeleccionada || null,
-                materiales: materiales.map((m) => ({
-                    material_id: m.material_id,
-                    cantidad_planeada: m.cantidad_real,
-                })),
-            };
+            nombre_proyecto: nombreProyecto,
+            tipo_proyecto: tipoProyecto || null,
+            nombre_cliente: nombreCliente,
+            telefono_cliente: telefonoCliente || null,
+            direccion_cliente: direccionCliente || null,
+            presupuesto_estimado: presupuestoEstimado ? Number(presupuestoEstimado) : null,
+            fecha_termino_maximo: fechaTermino || null,
+            plantilla_id: plantillaSeleccionada || null,
+            observaciones: observaciones.trim() || null,
+            materiales: materiales.map((m) => ({
+                material_id: m.material_id,
+                cantidad_planeada: m.cantidad_real,
+            })),
+        };
 
             await crearProyectoConMateriales(payload);
             navigate("/proyectos");
@@ -272,6 +274,20 @@ function NuevoProyecto() {
                                     value={fechaTermino}
                                     onChange={(e) => setFechaTermino(e.target.value)}
                                 />
+                            </div>
+                            <div className="col-md-12">
+                                <label className="form-label">Observaciones</label>
+                                <textarea
+                                    className="form-control"
+                                    rows="3"
+                                    value={observaciones}
+                                    onChange={(e) => setObservaciones(e.target.value)}
+                                    maxLength={500}
+                                    placeholder="Notas adicionales sobre el proyecto (opcional)"
+                                ></textarea>
+                                <small className="text-muted">
+                                    Máximo 500 caracteres
+                                </small>
                             </div>
                         </div>
                     </div>

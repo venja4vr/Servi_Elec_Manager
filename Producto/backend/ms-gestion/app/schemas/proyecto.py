@@ -17,6 +17,7 @@ class ProyectoCreate(BaseModel):
     presupuesto_final: Optional[Decimal] = None
     fecha_termino_maximo: Optional[date] = None
     plantilla_id: Optional[str] = None
+    observaciones: Optional[str] = None
 
 
 class ProyectoUpdate(BaseModel):
@@ -31,6 +32,7 @@ class ProyectoUpdate(BaseModel):
     presupuesto_final: Optional[Decimal] = None
     fecha_termino_maximo: Optional[date] = None
     plantilla_id: Optional[str] = None
+    observaciones: Optional[str] = None
 
 
 class ProyectoOut(BaseModel):
@@ -46,6 +48,7 @@ class ProyectoOut(BaseModel):
     presupuesto_final: Optional[Decimal]
     fecha_termino_maximo: Optional[date]
     plantilla_id: Optional[str]
+    observaciones: Optional[str]
     plantilla: Optional[PlantillaOut] = None
 
     class Config:
@@ -63,4 +66,5 @@ class ProyectoCreateConMateriales(BaseModel):
     presupuesto_estimado: Optional[Decimal] = None
     fecha_termino_maximo: Optional[date] = None
     plantilla_id: Optional[str] = None
+    observaciones: Optional[str] = None
     materiales: List[dict]  # [{"material_id": "...", "cantidad_planeada": 5}, ...]
