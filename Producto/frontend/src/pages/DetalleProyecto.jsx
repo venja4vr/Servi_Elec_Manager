@@ -53,7 +53,10 @@ function DetalleProyecto() {
 
     const formatearFecha = (fecha) => {
         if (!fecha) return "Sin definir";
-        const d = new Date(fecha);
+        // La fecha viene como "YYYY-MM-DD". Parseamos los números directamente
+        // para evitar problemas de zona horaria.
+        const [year, month, day] = fecha.split("-").map(Number);
+        const d = new Date(year, month - 1, day); // month es 0-indexado en JS
         return d.toLocaleDateString("es-CL", {
             day: "2-digit",
             month: "2-digit",

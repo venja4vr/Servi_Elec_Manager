@@ -97,15 +97,18 @@ const ejecutarCambioEstado = async (proyecto, nuevoEstado) => {
         }).format(precio);
     };
 
-    const formatearFecha = (fecha) => {
-        if (!fecha) return "Sin definir";
-        const d = new Date(fecha);
-        return d.toLocaleDateString("es-CL", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-        });
-    };
+const formatearFecha = (fecha) => {
+    if (!fecha) return "Sin definir";
+    // La fecha viene como "YYYY-MM-DD". Parseamos los números directamente
+    // para evitar problemas de zona horaria.
+    const [year, month, day] = fecha.split("-").map(Number);
+    const d = new Date(year, month - 1, day);
+    return d.toLocaleDateString("es-CL", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+    });
+};
 
     const proyectosFiltrados = proyectos.filter((p) => {
         if (!busqueda) return true;
