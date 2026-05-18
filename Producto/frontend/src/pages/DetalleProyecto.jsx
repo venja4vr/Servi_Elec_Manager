@@ -6,6 +6,12 @@ import {
     getMaterialesPlaneadosDeProyecto,
     actualizarProyecto,
 } from "../services/api";
+import {
+    validarTexto,
+    validarTextoOpcional,
+    validarTelefono,
+    validarPrecio,
+} from "../utils/validaciones";
 
 function DetalleProyecto() {
     const navigate = useNavigate();
@@ -20,6 +26,18 @@ function DetalleProyecto() {
     const [mostrarEditar, setMostrarEditar] = useState(false);
     const [datosEdicion, setDatosEdicion] = useState({});
     const [guardando, setGuardando] = useState(false);
+
+    // Errores del modal de edición
+    const [errEdNombreProyecto, setErrEdNombreProyecto] = useState("");
+    const [errEdTipoProyecto, setErrEdTipoProyecto] = useState("");
+    const [errEdNombreCliente, setErrEdNombreCliente] = useState("");
+    const [errEdTelefono, setErrEdTelefono] = useState("");
+    const [errEdDireccion, setErrEdDireccion] = useState("");
+    const [errEdFechaInicio, setErrEdFechaInicio] = useState("");
+    const [errEdFechaTermino, setErrEdFechaTermino] = useState("");
+    const [errEdPresupuestoEst, setErrEdPresupuestoEst] = useState("");
+    const [errEdPresupuestoFinal, setErrEdPresupuestoFinal] = useState("");
+    const [errEdObservaciones, setErrEdObservaciones] = useState("");
 
     useEffect(() => {
         cargarDatos();
@@ -53,10 +71,8 @@ function DetalleProyecto() {
 
     const formatearFecha = (fecha) => {
         if (!fecha) return "Sin definir";
-        // La fecha viene como "YYYY-MM-DD". Parseamos los números directamente
-        // para evitar problemas de zona horaria.
         const [year, month, day] = fecha.split("-").map(Number);
-        const d = new Date(year, month - 1, day); // month es 0-indexado en JS
+        const d = new Date(year, month - 1, day);
         return d.toLocaleDateString("es-CL", {
             day: "2-digit",
             month: "2-digit",
@@ -89,21 +105,52 @@ function DetalleProyecto() {
         return mapa[estado] || estado;
     };
 
+    // ====== VALIDADORES DEL MODAL EDITAR ======
+    const vEdNombreProyecto = (v) => validarTexto(v, { minimo: 3, maximo: 50, etiqueta: "El nombre del proyecto" });
+    const vEdTipoProyecto = (v) => validarTextoOpcional(v, { maximo: 25, etiqueta: "El tipo de proyecto" });
+    const vEdNombreCliente = (v) => validarTexto(v, { minimo: 3, maximo: 50, etiqueta: "El nombre del cliente" });
+    const vEdTelefono = (v) => validarTelefono(v, { obligatorio: false });
+    const vEdDireccion = (v) => validarTextoOpcional(v, { maximo: 150, etiqueta: "La dirección" });
+    const vEdPresupuesto = (v, etiqueta) => {
+        if (!v) return "";
+        return validarPrecio(v, { etiqueta });
+    };
+    const vEdObservaciones = (v) => validarTextoOpcional(v, { maximo: 500, etiqueta: "Las observaciones" });
+    const vEdFechas = (inicio, termino) => {
+        // Si ambas fechas existen, fecha_termino debe ser >= fecha_inicio
+        if (!inicio || !termino) return "";
+        if (new Date(termino) < new Date(inicio)) {
+            return "La fecha de término no puede ser anterior a la fecha de inicio";
+        }
+        return "";
+    };
+
     // EDITAR PROYECTO
     const abrirEditar = () => {
-    setDatosEdicion({
-        nombre_proyecto: proyecto.nombre_proyecto || "",
-        tipo_proyecto: proyecto.tipo_proyecto || "",
-        nombre_cliente: proyecto.nombre_cliente || "",
-        telefono_cliente: proyecto.telefono_cliente || "",
-        direccion_cliente: proyecto.direccion_cliente || "",
-        fecha_inicio: proyecto.fecha_inicio || "",
-        fecha_termino_maximo: proyecto.fecha_termino_maximo || "",
-        presupuesto_estimado: proyecto.presupuesto_estimado || "",
-        presupuesto_final: proyecto.presupuesto_final || "",
-        observaciones: proyecto.observaciones || "",
-    });
-    setMostrarEditar(true);
+        setDatosEdicion({
+            nombre_proyecto: proyecto.nombre_proyecto || "",
+            tipo_proyecto: proyecto.tipo_proyecto || "",
+            nombre_cliente: proyecto.nombre_cliente || "",
+            telefono_cliente: proyecto.telefono_cliente || "",
+            direccion_cliente: proyecto.direccion_cliente || "",
+            fecha_inicio: proyecto.fecha_inicio || "",
+            fecha_termino_maximo: proyecto.fecha_termino_maximo || "",
+            presupuesto_estimado: proyecto.presupuesto_estimado || "",
+            presupuesto_final: proyecto.presupuesto_final || "",
+            observaciones: proyecto.observaciones || "",
+        });
+        // Limpiar errores
+        setErrEdNombreProyecto("");
+        setErrEdTipoProyecto("");
+        setErrEdNombreCliente("");
+        setErrEdTelefono("");
+        setErrEdDireccion("");
+        setErrEdFechaInicio("");
+        setErrEdFechaTermino("");
+        setErrEdPresupuestoEst("");
+        setErrEdPresupuestoFinal("");
+        setErrEdObservaciones("");
+        setMostrarEditar(true);
     };
 
     const handleCambioCampo = (campo, valor) => {
@@ -112,19 +159,41 @@ function DetalleProyecto() {
 
     const confirmarEditar = async () => {
         setError("");
-        if (!datosEdicion.nombre_proyecto.trim() || !datosEdicion.nombre_cliente.trim()) {
-            setError("El nombre del proyecto y del cliente son obligatorios");
+
+        // Validar todos los campos
+        const errNP = vEdNombreProyecto(datosEdicion.nombre_proyecto);
+        const errTP = vEdTipoProyecto(datosEdicion.tipo_proyecto);
+        const errNC = vEdNombreCliente(datosEdicion.nombre_cliente);
+        const errTel = vEdTelefono(datosEdicion.telefono_cliente);
+        const errDir = vEdDireccion(datosEdicion.direccion_cliente);
+        const errPreEst = vEdPresupuesto(datosEdicion.presupuesto_estimado, "El presupuesto estimado");
+        const errPreFin = vEdPresupuesto(datosEdicion.presupuesto_final, "El presupuesto final");
+        const errObs = vEdObservaciones(datosEdicion.observaciones);
+        const errFechas = vEdFechas(datosEdicion.fecha_inicio, datosEdicion.fecha_termino_maximo);
+
+        setErrEdNombreProyecto(errNP);
+        setErrEdTipoProyecto(errTP);
+        setErrEdNombreCliente(errNC);
+        setErrEdTelefono(errTel);
+        setErrEdDireccion(errDir);
+        setErrEdPresupuestoEst(errPreEst);
+        setErrEdPresupuestoFinal(errPreFin);
+        setErrEdObservaciones(errObs);
+        // El error de fechas lo asignamos al campo de término máximo
+        setErrEdFechaTermino(errFechas);
+
+        if (errNP || errTP || errNC || errTel || errDir || errPreEst || errPreFin || errObs || errFechas) {
             return;
         }
 
         setGuardando(true);
         try {
             const payload = {
-                nombre_proyecto: datosEdicion.nombre_proyecto,
-                tipo_proyecto: datosEdicion.tipo_proyecto || null,
-                nombre_cliente: datosEdicion.nombre_cliente,
-                telefono_cliente: datosEdicion.telefono_cliente || null,
-                direccion_cliente: datosEdicion.direccion_cliente || null,
+                nombre_proyecto: datosEdicion.nombre_proyecto.trim(),
+                tipo_proyecto: datosEdicion.tipo_proyecto?.trim() || null,
+                nombre_cliente: datosEdicion.nombre_cliente.trim(),
+                telefono_cliente: datosEdicion.telefono_cliente?.trim() || null,
+                direccion_cliente: datosEdicion.direccion_cliente?.trim() || null,
                 fecha_inicio: datosEdicion.fecha_inicio || null,
                 fecha_termino_maximo: datosEdicion.fecha_termino_maximo || null,
                 presupuesto_estimado: datosEdicion.presupuesto_estimado
@@ -453,34 +522,44 @@ function DetalleProyecto() {
                                             <label className="form-label">Nombre del cliente *</label>
                                             <input
                                                 type="text"
-                                                className="form-control"
+                                                className={`form-control ${errEdNombreCliente ? "is-invalid" : ""}`}
                                                 value={datosEdicion.nombre_cliente}
-                                                onChange={(e) =>
-                                                    handleCambioCampo("nombre_cliente", e.target.value)
-                                                }
+                                                onChange={(e) => handleCambioCampo("nombre_cliente", e.target.value)}
+                                                onBlur={() => setErrEdNombreCliente(vEdNombreCliente(datosEdicion.nombre_cliente))}
+                                                maxLength={50}
                                             />
+                                            {errEdNombreCliente && (
+                                                <div className="invalid-feedback">{errEdNombreCliente}</div>
+                                            )}
                                         </div>
                                         <div className="col-md-6">
                                             <label className="form-label">Teléfono</label>
                                             <input
                                                 type="text"
-                                                className="form-control"
+                                                className={`form-control ${errEdTelefono ? "is-invalid" : ""}`}
                                                 value={datosEdicion.telefono_cliente}
-                                                onChange={(e) =>
-                                                    handleCambioCampo("telefono_cliente", e.target.value)
-                                                }
+                                                onChange={(e) => handleCambioCampo("telefono_cliente", e.target.value)}
+                                                onBlur={() => setErrEdTelefono(vEdTelefono(datosEdicion.telefono_cliente))}
+                                                maxLength={15}
+                                                placeholder="56912345678"
                                             />
+                                            {errEdTelefono && (
+                                                <div className="invalid-feedback">{errEdTelefono}</div>
+                                            )}
                                         </div>
                                         <div className="col-md-12">
                                             <label className="form-label">Dirección</label>
                                             <input
                                                 type="text"
-                                                className="form-control"
+                                                className={`form-control ${errEdDireccion ? "is-invalid" : ""}`}
                                                 value={datosEdicion.direccion_cliente}
-                                                onChange={(e) =>
-                                                    handleCambioCampo("direccion_cliente", e.target.value)
-                                                }
+                                                onChange={(e) => handleCambioCampo("direccion_cliente", e.target.value)}
+                                                onBlur={() => setErrEdDireccion(vEdDireccion(datosEdicion.direccion_cliente))}
+                                                maxLength={150}
                                             />
+                                            {errEdDireccion && (
+                                                <div className="invalid-feedback">{errEdDireccion}</div>
+                                            )}
                                         </div>
                                     </div>
 
@@ -490,89 +569,107 @@ function DetalleProyecto() {
                                             <label className="form-label">Nombre del proyecto *</label>
                                             <input
                                                 type="text"
-                                                className="form-control"
+                                                className={`form-control ${errEdNombreProyecto ? "is-invalid" : ""}`}
                                                 value={datosEdicion.nombre_proyecto}
-                                                onChange={(e) =>
-                                                    handleCambioCampo("nombre_proyecto", e.target.value)
-                                                }
+                                                onChange={(e) => handleCambioCampo("nombre_proyecto", e.target.value)}
+                                                onBlur={() => setErrEdNombreProyecto(vEdNombreProyecto(datosEdicion.nombre_proyecto))}
+                                                maxLength={50}
                                             />
+                                            {errEdNombreProyecto && (
+                                                <div className="invalid-feedback">{errEdNombreProyecto}</div>
+                                            )}
                                         </div>
                                         <div className="col-md-6">
                                             <label className="form-label">Tipo de proyecto</label>
                                             <input
                                                 type="text"
-                                                className="form-control"
+                                                className={`form-control ${errEdTipoProyecto ? "is-invalid" : ""}`}
                                                 value={datosEdicion.tipo_proyecto}
-                                                onChange={(e) =>
-                                                    handleCambioCampo("tipo_proyecto", e.target.value)
-                                                }
+                                                onChange={(e) => handleCambioCampo("tipo_proyecto", e.target.value)}
+                                                onBlur={() => setErrEdTipoProyecto(vEdTipoProyecto(datosEdicion.tipo_proyecto))}
+                                                maxLength={25}
                                             />
+                                            {errEdTipoProyecto && (
+                                                <div className="invalid-feedback">{errEdTipoProyecto}</div>
+                                            )}
                                         </div>
                                         <div className="col-md-6">
                                             <label className="form-label">Fecha de inicio</label>
                                             <input
                                                 type="date"
-                                                className="form-control"
+                                                className={`form-control ${errEdFechaInicio ? "is-invalid" : ""}`}
                                                 value={datosEdicion.fecha_inicio}
-                                                onChange={(e) =>
-                                                    handleCambioCampo("fecha_inicio", e.target.value)
-                                                }
+                                                onChange={(e) => handleCambioCampo("fecha_inicio", e.target.value)}
                                             />
+                                            {errEdFechaInicio && (
+                                                <div className="invalid-feedback">{errEdFechaInicio}</div>
+                                            )}
                                         </div>
                                         <div className="col-md-6">
                                             <label className="form-label">Fecha de término máximo</label>
                                             <input
                                                 type="date"
-                                                className="form-control"
+                                                className={`form-control ${errEdFechaTermino ? "is-invalid" : ""}`}
                                                 value={datosEdicion.fecha_termino_maximo}
-                                                onChange={(e) =>
-                                                    handleCambioCampo("fecha_termino_maximo", e.target.value)
-                                                }
+                                                onChange={(e) => handleCambioCampo("fecha_termino_maximo", e.target.value)}
                                             />
+                                            {errEdFechaTermino && (
+                                                <div className="invalid-feedback">{errEdFechaTermino}</div>
+                                            )}
                                         </div>
                                         <div className="col-md-6">
                                             <label className="form-label">Presupuesto estimado (CLP)</label>
                                             <input
                                                 type="number"
-                                                className="form-control"
+                                                className={`form-control ${errEdPresupuestoEst ? "is-invalid" : ""}`}
                                                 min="0"
+                                                step="0.01"
                                                 value={datosEdicion.presupuesto_estimado}
-                                                onChange={(e) =>
-                                                    handleCambioCampo("presupuesto_estimado", e.target.value)
-                                                }
+                                                onChange={(e) => handleCambioCampo("presupuesto_estimado", e.target.value)}
+                                                onBlur={() => setErrEdPresupuestoEst(vEdPresupuesto(datosEdicion.presupuesto_estimado, "El presupuesto estimado"))}
                                             />
+                                            {errEdPresupuestoEst && (
+                                                <div className="invalid-feedback">{errEdPresupuestoEst}</div>
+                                            )}
                                         </div>
                                         <div className="col-md-6">
                                             <label className="form-label">Presupuesto final (CLP)</label>
                                             <input
                                                 type="number"
-                                                className="form-control"
+                                                className={`form-control ${errEdPresupuestoFinal ? "is-invalid" : ""}`}
                                                 min="0"
+                                                step="0.01"
                                                 value={datosEdicion.presupuesto_final}
-                                                onChange={(e) =>
-                                                    handleCambioCampo("presupuesto_final", e.target.value)
-                                                }
+                                                onChange={(e) => handleCambioCampo("presupuesto_final", e.target.value)}
+                                                onBlur={() => setErrEdPresupuestoFinal(vEdPresupuesto(datosEdicion.presupuesto_final, "El presupuesto final"))}
                                             />
-                                            <small className="text-muted">
-                                                Costo final una vez completado el servicio
-                                            </small>
+                                            {errEdPresupuestoFinal ? (
+                                                <div className="invalid-feedback">{errEdPresupuestoFinal}</div>
+                                            ) : (
+                                                <small className="text-muted">
+                                                    Costo final una vez completado el servicio
+                                                </small>
+                                            )}
                                         </div>
 
                                         <div className="col-md-12">
                                             <label className="form-label">Observaciones</label>
                                             <textarea
-                                                className="form-control"
+                                                className={`form-control ${errEdObservaciones ? "is-invalid" : ""}`}
                                                 rows="3"
                                                 value={datosEdicion.observaciones || ""}
-                                                onChange={(e) =>
-                                                    handleCambioCampo("observaciones", e.target.value)
-                                                }
+                                                onChange={(e) => handleCambioCampo("observaciones", e.target.value)}
+                                                onBlur={() => setErrEdObservaciones(vEdObservaciones(datosEdicion.observaciones))}
                                                 maxLength={500}
                                                 placeholder="Notas adicionales sobre el proyecto"
                                             ></textarea>
-                                            <small className="text-muted">
-                                                Máximo 500 caracteres
-                                            </small>
+                                            {errEdObservaciones ? (
+                                                <div className="invalid-feedback">{errEdObservaciones}</div>
+                                            ) : (
+                                                <small className="text-muted">
+                                                    Máximo 500 caracteres
+                                                </small>
+                                            )}
                                         </div>
                                     </div>
 
