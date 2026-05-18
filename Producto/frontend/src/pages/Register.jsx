@@ -3,37 +3,95 @@ import { useNavigate } from "react-router-dom";
 import AuthLayout from "../components/AuthLayout";
 import { register } from "../services/api";
 
+const REGEX_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const REGEX_MAYUSCULA = /[A-Z]/;
+const REGEX_NUMERO = /[0-9]/;
+const REGEX_ESPECIAL = /[!@#$%^&*(),.?":{}|<>_\-+=/\\[\]`~';]/;
+
 function Register() {
     const navigate = useNavigate();
     const [nombre, setNombre] = useState("");
     const [correo, setCorreo] = useState("");
     const [password, setPassword] = useState("");
     const [confirmarPassword, setConfirmarPassword] = useState("");
-    const [error, setError] = useState("");
+
+    // Errores por campo
+    const [errorNombre, setErrorNombre] = useState("");
+    const [errorCorreo, setErrorCorreo] = useState("");
+    const [errorPassword, setErrorPassword] = useState("");
+    const [errorConfirmar, setErrorConfirmar] = useState("");
+
+    const [errorGeneral, setErrorGeneral] = useState("");
     const [exito, setExito] = useState(false);
     const [cargando, setCargando] = useState(false);
 
+    // ====== VALIDADORES ======
+    const validarNombre = (valor) => {
+        const v = valor.trim();
+        if (!v) return "El nombre es obligatorio";
+        if (v.length < 3) return "El nombre debe tener al menos 3 caracteres";
+        if (v.length > 50) return "El nombre no puede superar 50 caracteres";
+        return "";
+    };
+
+    const validarCorreo = (valor) => {
+        if (!valor.trim()) return "El correo es obligatorio";
+        if (valor.length > 40) return "El correo no puede superar 40 caracteres";
+        if (!REGEX_CORREO.test(valor)) return "Formato de correo inválido";
+        return "";
+    };
+
+    const validarPassword = (valor) => {
+        if (!valor) return "La contraseña es obligatoria";
+        if (valor.length < 8) return "Debe tener al menos 8 caracteres";
+        if (!REGEX_MAYUSCULA.test(valor)) return "Debe incluir al menos una mayúscula";
+        if (!REGEX_NUMERO.test(valor)) return "Debe incluir al menos un número";
+        if (!REGEX_ESPECIAL.test(valor)) return "Debe incluir al menos un carácter especial";
+        return "";
+    };
+
+    const validarConfirmar = (valor, pass = password) => {
+        if (!valor) return "Debes confirmar la contraseña";
+        if (valor !== pass) return "Las contraseñas no coinciden";
+        return "";
+    };
+
+    // ====== HANDLERS DE BLUR ======
+    const handleBlurNombre = () => setErrorNombre(validarNombre(nombre));
+    const handleBlurCorreo = () => setErrorCorreo(validarCorreo(correo));
+    const handleBlurPassword = () => {
+        setErrorPassword(validarPassword(password));
+        // Si ya escribió confirmar, revalida también
+        if (confirmarPassword) {
+            setErrorConfirmar(validarConfirmar(confirmarPassword, password));
+        }
+    };
+    const handleBlurConfirmar = () => setErrorConfirmar(validarConfirmar(confirmarPassword));
+
+    // ====== SUBMIT ======
     const handleRegister = async (e) => {
         e.preventDefault();
-        setError("");
+        setErrorGeneral("");
 
-        if (password !== confirmarPassword) {
-            setError("Las contraseñas no coinciden");
-            return;
-        }
+        // Validar todo
+        const errN = validarNombre(nombre);
+        const errC = validarCorreo(correo);
+        const errP = validarPassword(password);
+        const errCF = validarConfirmar(confirmarPassword);
+        setErrorNombre(errN);
+        setErrorCorreo(errC);
+        setErrorPassword(errP);
+        setErrorConfirmar(errCF);
 
-        if (password.length < 6) {
-            setError("La contraseña debe tener al menos 6 caracteres");
-            return;
-        }
+        if (errN || errC || errP || errCF) return;
 
         setCargando(true);
 
         try {
-            await register(nombre, correo, password);
+            await register(nombre.trim(), correo.trim(), password);
             setExito(true);
         } catch (err) {
-            setError(err.message || "Error al crear la cuenta");
+            setErrorGeneral(err.message || "Error al crear la cuenta");
         } finally {
             setCargando(false);
         }
@@ -74,56 +132,74 @@ function Register() {
                     </p>
                 </div>
 
-                {error && (
+                {errorGeneral && (
                     <div className="alert alert-danger" role="alert">
-                        {error}
+                        {errorGeneral}
                     </div>
                 )}
 
-                <form onSubmit={handleRegister}>
+                <form onSubmit={handleRegister} noValidate>
                     <div className="mb-3">
                         <label className="form-label">Nombre</label>
                         <input
                             type="text"
-                            className="form-control"
+                            className={`form-control ${errorNombre ? "is-invalid" : ""}`}
                             placeholder="Ingresa tu nombre"
                             value={nombre}
                             onChange={(e) => setNombre(e.target.value)}
-                            required
+                            onBlur={handleBlurNombre}
+                            maxLength={50}
                         />
+                        {errorNombre && (
+                            <div className="invalid-feedback">{errorNombre}</div>
+                        )}
                     </div>
                     <div className="mb-3">
                         <label className="form-label">Correo</label>
                         <input
                             type="email"
-                            className="form-control"
+                            className={`form-control ${errorCorreo ? "is-invalid" : ""}`}
                             placeholder="ejemplo@correo.com"
                             value={correo}
                             onChange={(e) => setCorreo(e.target.value)}
-                            required
+                            onBlur={handleBlurCorreo}
+                            maxLength={40}
                         />
+                        {errorCorreo && (
+                            <div className="invalid-feedback">{errorCorreo}</div>
+                        )}
                     </div>
                     <div className="mb-3">
                         <label className="form-label">Contraseña</label>
                         <input
                             type="password"
-                            className="form-control"
+                            className={`form-control ${errorPassword ? "is-invalid" : ""}`}
                             placeholder="Crea una contraseña"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            required
+                            onBlur={handleBlurPassword}
                         />
+                        {errorPassword ? (
+                            <div className="invalid-feedback">{errorPassword}</div>
+                        ) : (
+                            <small className="text-muted">
+                                Mínimo 8 caracteres, con mayúscula, número y carácter especial.
+                            </small>
+                        )}
                     </div>
                     <div className="mb-4">
                         <label className="form-label">Confirmar contraseña</label>
                         <input
                             type="password"
-                            className="form-control"
+                            className={`form-control ${errorConfirmar ? "is-invalid" : ""}`}
                             placeholder="Repite la contraseña"
                             value={confirmarPassword}
                             onChange={(e) => setConfirmarPassword(e.target.value)}
-                            required
+                            onBlur={handleBlurConfirmar}
                         />
+                        {errorConfirmar && (
+                            <div className="invalid-feedback">{errorConfirmar}</div>
+                        )}
                     </div>
                     <button
                         type="submit"

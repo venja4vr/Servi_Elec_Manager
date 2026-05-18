@@ -8,6 +8,13 @@ import {
     eliminarMaterial,
 } from "../services/api";
 import ConfirmarPasswordModal from "../components/ConfirmarPasswordModal";
+import {
+    validarTexto,
+    validarTextoOpcional,
+    validarEnteroPositivo,
+    validarPrecio,
+    validarSeleccion,
+} from "../utils/validaciones";
 
 function Inventario() {
     const navigate = useNavigate();
@@ -21,6 +28,14 @@ function Inventario() {
     // Modal de edición
     const [mostrarEditar, setMostrarEditar] = useState(false);
     const [materialEditando, setMaterialEditando] = useState(null);
+
+    // Errores del modal de edición
+    const [errEdNombre, setErrEdNombre] = useState("");
+    const [errEdDescripcion, setErrEdDescripcion] = useState("");
+    const [errEdStockActual, setErrEdStockActual] = useState("");
+    const [errEdStockCritico, setErrEdStockCritico] = useState("");
+    const [errEdPrecio, setErrEdPrecio] = useState("");
+    const [errEdCategoria, setErrEdCategoria] = useState("");
 
     // Modal de eliminación
     const [mostrarEliminar, setMostrarEliminar] = useState(false);
@@ -76,9 +91,24 @@ function Inventario() {
         return "bg-success";
     };
 
+    // ====== VALIDADORES DEL MODAL EDITAR ======
+    const vEdNombre = (v) => validarTexto(v, { minimo: 3, maximo: 50, etiqueta: "El nombre" });
+    const vEdDescripcion = (v) => validarTextoOpcional(v, { maximo: 250, etiqueta: "La descripción" });
+    const vEdStockActual = (v) => validarEnteroPositivo(v, { etiqueta: "El stock actual" });
+    const vEdStockCritico = (v) => validarEnteroPositivo(v, { etiqueta: "El stock crítico" });
+    const vEdPrecio = (v) => validarPrecio(v, { etiqueta: "El precio" });
+    const vEdCategoria = (v) => validarSeleccion(v, "una categoría");
+
     // EDITAR
     const abrirEditar = (material) => {
         setMaterialEditando({ ...material });
+        // Limpiar errores anteriores al abrir
+        setErrEdNombre("");
+        setErrEdDescripcion("");
+        setErrEdStockActual("");
+        setErrEdStockCritico("");
+        setErrEdPrecio("");
+        setErrEdCategoria("");
         setMostrarEditar(true);
     };
 
@@ -88,10 +118,30 @@ function Inventario() {
 
     const confirmarEditar = async () => {
         setError("");
+
+        // Validar todo
+        const errN = vEdNombre(materialEditando.nombre_material);
+        const errD = vEdDescripcion(materialEditando.descripcion);
+        const errSA = vEdStockActual(materialEditando.stock_actual);
+        const errSC = vEdStockCritico(materialEditando.stock_critico);
+        const errP = vEdPrecio(materialEditando.precio_unitario);
+        const errC = vEdCategoria(materialEditando.categoria_id);
+
+        setErrEdNombre(errN);
+        setErrEdDescripcion(errD);
+        setErrEdStockActual(errSA);
+        setErrEdStockCritico(errSC);
+        setErrEdPrecio(errP);
+        setErrEdCategoria(errC);
+
+        if (errN || errD || errSA || errSC || errP || errC) return;
+
         try {
             const payload = {
-                nombre_material: materialEditando.nombre_material,
-                descripcion: materialEditando.descripcion || null,
+                nombre_material: String(materialEditando.nombre_material).trim(),
+                descripcion: materialEditando.descripcion
+                    ? String(materialEditando.descripcion).trim() || null
+                    : null,
                 stock_actual: Number(materialEditando.stock_actual),
                 stock_critico: Number(materialEditando.stock_critico),
                 precio_unitario: Number(materialEditando.precio_unitario),
@@ -287,75 +337,105 @@ function Inventario() {
                                             <label className="form-label">Nombre *</label>
                                             <input
                                                 type="text"
-                                                className="form-control"
+                                                className={`form-control ${errEdNombre ? "is-invalid" : ""}`}
                                                 value={materialEditando.nombre_material || ""}
                                                 onChange={(e) =>
                                                     handleCambioCampo("nombre_material", e.target.value)
                                                 }
+                                                onBlur={() => setErrEdNombre(vEdNombre(materialEditando.nombre_material))}
+                                                maxLength={50}
                                             />
+                                            {errEdNombre && (
+                                                <div className="invalid-feedback">{errEdNombre}</div>
+                                            )}
                                         </div>
                                         <div className="col-md-6">
                                             <label className="form-label">Categoría *</label>
                                             <select
-                                                className="form-select"
+                                                className={`form-select ${errEdCategoria ? "is-invalid" : ""}`}
                                                 value={materialEditando.categoria_id || ""}
                                                 onChange={(e) =>
                                                     handleCambioCampo("categoria_id", e.target.value)
                                                 }
+                                                onBlur={() => setErrEdCategoria(vEdCategoria(materialEditando.categoria_id))}
                                             >
+                                                <option value="">Seleccionar categoría</option>
                                                 {categorias.map((c) => (
                                                     <option key={c.id_categoria} value={c.id_categoria}>
                                                         {c.nombre_categoria}
                                                     </option>
                                                 ))}
                                             </select>
+                                            {errEdCategoria && (
+                                                <div className="invalid-feedback">{errEdCategoria}</div>
+                                            )}
                                         </div>
                                         <div className="col-md-4">
                                             <label className="form-label">Precio (CLP) *</label>
                                             <input
                                                 type="number"
-                                                className="form-control"
+                                                className={`form-control ${errEdPrecio ? "is-invalid" : ""}`}
                                                 min="0"
-                                                value={materialEditando.precio_unitario || 0}
+                                                step="0.01"
+                                                value={materialEditando.precio_unitario ?? ""}
                                                 onChange={(e) =>
                                                     handleCambioCampo("precio_unitario", e.target.value)
                                                 }
+                                                onBlur={() => setErrEdPrecio(vEdPrecio(materialEditando.precio_unitario))}
                                             />
+                                            {errEdPrecio && (
+                                                <div className="invalid-feedback">{errEdPrecio}</div>
+                                            )}
                                         </div>
                                         <div className="col-md-4">
                                             <label className="form-label">Stock actual *</label>
                                             <input
                                                 type="number"
-                                                className="form-control"
+                                                className={`form-control ${errEdStockActual ? "is-invalid" : ""}`}
                                                 min="0"
-                                                value={materialEditando.stock_actual || 0}
+                                                step="1"
+                                                value={materialEditando.stock_actual ?? ""}
                                                 onChange={(e) =>
                                                     handleCambioCampo("stock_actual", e.target.value)
                                                 }
+                                                onBlur={() => setErrEdStockActual(vEdStockActual(materialEditando.stock_actual))}
                                             />
+                                            {errEdStockActual && (
+                                                <div className="invalid-feedback">{errEdStockActual}</div>
+                                            )}
                                         </div>
                                         <div className="col-md-4">
                                             <label className="form-label">Stock crítico *</label>
                                             <input
                                                 type="number"
-                                                className="form-control"
+                                                className={`form-control ${errEdStockCritico ? "is-invalid" : ""}`}
                                                 min="0"
-                                                value={materialEditando.stock_critico || 0}
+                                                step="1"
+                                                value={materialEditando.stock_critico ?? ""}
                                                 onChange={(e) =>
                                                     handleCambioCampo("stock_critico", e.target.value)
                                                 }
+                                                onBlur={() => setErrEdStockCritico(vEdStockCritico(materialEditando.stock_critico))}
                                             />
+                                            {errEdStockCritico && (
+                                                <div className="invalid-feedback">{errEdStockCritico}</div>
+                                            )}
                                         </div>
                                         <div className="col-md-12">
                                             <label className="form-label">Descripción</label>
                                             <textarea
-                                                className="form-control"
+                                                className={`form-control ${errEdDescripcion ? "is-invalid" : ""}`}
                                                 rows="3"
                                                 value={materialEditando.descripcion || ""}
                                                 onChange={(e) =>
                                                     handleCambioCampo("descripcion", e.target.value)
                                                 }
+                                                onBlur={() => setErrEdDescripcion(vEdDescripcion(materialEditando.descripcion))}
+                                                maxLength={250}
                                             ></textarea>
+                                            {errEdDescripcion && (
+                                                <div className="invalid-feedback">{errEdDescripcion}</div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
