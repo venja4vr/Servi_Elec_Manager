@@ -252,7 +252,6 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
 
 
 def _crear_proyecto(sesion: SesionChat) -> str:
-    # Reúne todos los datos recopilados y llama a ms-gestion
     proyecto = gestion_client.crear_proyecto(
         nombre_cliente  = sesion.nombre_cliente or "Cliente WhatsApp",
         telefono        = sesion.telefono,
@@ -267,7 +266,26 @@ def _crear_proyecto(sesion: SesionChat) -> str:
     sesion_service.guardar_sesion(sesion)
 
     if proyecto:
+        # Notificar al administrador
+        from app.core.config import ADMIN_PHONE_NUMBER
+        if ADMIN_PHONE_NUMBER:
+            precio_fmt = (
+                f"${sesion.precio_estimado:,.0f}".replace(",", ".")
+                if sesion.precio_estimado
+                else "por evaluar"
+            )
+            msg_admin = (
+                f" *Nueva solicitud recibida*\n\n"
+                f"Cliente: {sesion.nombre_cliente or 'Sin nombre'}\n"
+                f"Servicio: {sesion.nombre_servicio}\n"
+                f"Presupuesto: {precio_fmt}\n"
+                f"Teléfono: +{sesion.telefono}\n\n"
+                f"Revisa la plataforma para aceptar o rechazar."
+            )
+            whatsapp_service.enviar_mensaje(ADMIN_PHONE_NUMBER, msg_admin)
+
         return _texto_proyecto_creado(sesion.nombre_servicio, sesion.nombre_cliente or "")
+
     return (
         "⚠️ Hubo un error al registrar tu solicitud.\n"
         "Contáctanos directamente al +56 9 XXXX XXXX.\n\n"
