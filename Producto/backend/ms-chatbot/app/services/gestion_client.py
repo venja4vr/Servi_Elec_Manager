@@ -101,6 +101,7 @@ def crear_proyecto(
     plantilla_id: str,
     nombre_servicio: str,
     direccion: Optional[str] = None,
+    comuna: Optional[str] = None,        # ← NUEVO PARÁMETRO
     fecha_preferida: Optional[str] = None,
     observaciones: Optional[str] = None,
     precio_estimado: Optional[float] = None,
@@ -109,6 +110,16 @@ def crear_proyecto(
     # Procesar fecha_preferida y observaciones
     fecha_inicio_final = _parsear_fecha(fecha_preferida)
     observaciones_final = _limpiar_observaciones(observaciones)
+
+    # Combinar calle + comuna en un solo campo
+    if direccion and comuna:
+        direccion_completa = f"{direccion}, {comuna}"
+    elif direccion:
+        direccion_completa = direccion
+    elif comuna:
+        direccion_completa = comuna
+    else:
+        direccion_completa = None
 
     # Primero obtener los materiales de la plantilla
     materiales = []
@@ -127,7 +138,7 @@ def crear_proyecto(
     except Exception as e:
         print(f"[GESTION] No se pudieron obtener materiales: {e}")
 
-    # Construir payload usando con-materiales si hay materiales, sino el simple
+    # Construir payload
     if materiales:
         endpoint = "/proyectos/con-materiales"
         payload = {
@@ -135,7 +146,7 @@ def crear_proyecto(
             "tipo_proyecto": "Chatbot",
             "nombre_cliente": nombre_cliente,
             "telefono_cliente": telefono,
-            "direccion_cliente": direccion,
+            "direccion_cliente": direccion_completa,   # ← combinada
             "fecha_inicio": fecha_inicio_final,
             "presupuesto_estimado": precio_estimado,
             "plantilla_id": plantilla_id,
@@ -149,7 +160,7 @@ def crear_proyecto(
             "tipo_proyecto": "Chatbot",
             "nombre_cliente": nombre_cliente,
             "telefono_cliente": telefono,
-            "direccion_cliente": direccion,
+            "direccion_cliente": direccion_completa,   # ← combinada
             "fecha_inicio": fecha_inicio_final,
             "estado": "pendiente",
             "presupuesto_estimado": precio_estimado,
