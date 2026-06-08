@@ -90,12 +90,6 @@ def actualizar_proyecto(db: Session, proyecto_id: str, data: ProyectoUpdate):
 
 
 def cambiar_estado(db: Session, proyecto_id: str, nuevo_estado: str, usuario_id: str):
-    """
-    Cambia el estado del proyecto y ejecuta la lógica asociada:
-    - pendiente → en_curso: VALIDA stock primero. Si falta, rechaza. Si OK, descuenta.
-    - en_curso → cancelado: devuelve el stock al inventario.
-    - en_curso → finalizado: simplemente cambia el estado.
-    """
     estados_validos = ["pendiente", "en_curso", "finalizado", "cancelado"]
     if nuevo_estado not in estados_validos:
         raise HTTPException(
@@ -114,6 +108,30 @@ def cambiar_estado(db: Session, proyecto_id: str, nuevo_estado: str, usuario_id:
     # Transición: en_curso → cancelado (devolver stock)
     elif estado_actual == "en_curso" and nuevo_estado == "cancelado":
         _devolver_stock(db, p)
+
+    # ── Notificaciones WhatsApp al cliente ──────────────────
+    from app.services.whatsapp_client import enviar_mensaje
+
+    telefono = getattr(p, "telefono_cliente", None)
+    nombre   = getattr(p, "nombre_cliente", "Cliente")
+    servicio = getattr(p, "nombre_servicio", "servicio")
+
+    if telefono:
+        if nuevo_estado == "en_curso":
+            msg = (
+                f"Hola {nombre}, tu solicitud de *{servicio}* ha sido aceptada.\n"
+                f"Te contactaremos pronto para coordinar la visita.\n\n"
+                f"_Servi Elec_"
+            )
+            enviar_mensaje(telefono, msg)
+
+        elif nuevo_estado == "finalizado":
+            msg = (
+                f"✅ Hola {nombre}, tu servicio de *{servicio}* ha sido completado.\n"
+                f"Gracias por confiar en Servi Elec.\n\n"
+                f"_Escribe *menú* si necesitas otro servicio._"
+            )
+            enviar_mensaje(telefono, msg)
 
     p.estado = nuevo_estado
     db.commit()
