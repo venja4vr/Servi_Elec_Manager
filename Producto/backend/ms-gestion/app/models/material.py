@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Numeric, ForeignKey
+from sqlalchemy import Column, String, Integer, Numeric, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 import uuid
@@ -6,13 +6,15 @@ import uuid
 class Material(Base):
     __tablename__ = "material"
 
-    id_material      = Column(String(20), primary_key=True, default=lambda: uuid.uuid4().hex[:20])
-    nombre_material  = Column(String(50), nullable=False)
-    descripcion      = Column(String(250), nullable=True)
-    stock_actual     = Column(Integer, nullable=False, default=0)
-    stock_critico    = Column(Integer, nullable=False, default=0)
-    precio_unitario  = Column(Numeric(9, 2), nullable=False, default=0)
-    categoria_id     = Column(String(20), ForeignKey("categoria.id_categoria"), nullable=False)
+    id_material                = Column(String(20), primary_key=True, default=lambda: uuid.uuid4().hex[:20])
+    nombre_material            = Column(String(50), nullable=False)
+    descripcion                = Column(String(250), nullable=True)
+    stock_actual               = Column(Integer, nullable=False, default=0)
+    stock_critico              = Column(Integer, nullable=False, default=0)
+    precio_unitario            = Column(Numeric(9, 2), nullable=False, default=0)
+    categoria_id               = Column(String(20), ForeignKey("categoria.id_categoria"), nullable=False)
+    precio_sodimac_actual      = Column(Numeric(12, 2), nullable=True)
+    precio_sodimac_actualizado = Column(DateTime, nullable=True)
 
     categoria = relationship("Categoria", backref="materiales")
 

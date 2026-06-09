@@ -1,5 +1,6 @@
 // Configuración central de la API
-const API_URL = "http://98.95.225.248:8000";
+//const API_URL = "http://98.95.225.248:8000";
+const API_URL = "http://localhost:8000";
 
 // Función helper para hacer peticiones autenticadas
 export async function fetchAPI(endpoint, options = {}) {
@@ -156,6 +157,26 @@ export async function getPlantilla(id) {
     return fetchAPI(`/plantillas/${id}`);
 }
 
+export async function crearPlantilla(data) {
+    return fetchAPI("/plantillas/", {
+        method: "POST",
+        body: JSON.stringify(data),
+    });
+}
+
+export async function actualizarPlantilla(id, data) {
+    return fetchAPI(`/plantillas/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+    });
+}
+
+export async function eliminarPlantilla(id) {
+    return fetchAPI(`/plantillas/${id}`, {
+        method: "DELETE",
+    });
+}
+
 export async function getMovimientos() {
     return fetchAPI("/movimientos/");
 }
@@ -209,6 +230,96 @@ export async function ajustarStockMaterial(materialId, cantidad) {
     return fetchAPI(`/materiales/${materialId}/stock?cantidad=${cantidad}`, {
         method: "PATCH",
     });
+}
+
+// =============== PRECIOS SODIMAC ===============
+
+export async function actualizarPrecioMaterial(materialId) {
+    return fetchAPI(`/materiales/${materialId}/actualizar-precio`, {
+        method: "POST",
+    });
+}
+
+export async function actualizarTodosLosPrecios() {
+    return fetchAPI("/materiales/actualizar-precios", {
+        method: "POST",
+    });
+}
+
+export async function guardarPrecioManual(materialId, precio) {
+    return fetchAPI(`/materiales/${materialId}/precio-manual`, {
+        method: "POST",
+        body: JSON.stringify({ precio }),
+    });
+}
+
+export async function getHistoricoPrecios(materialId, dias = 30) {
+    return fetchAPI(`/materiales/${materialId}/historico-precios?dias=${dias}`);
+}
+
+export async function actualizarPreciosPlantillas() {
+    return fetchAPI("/materiales/actualizar-precios-plantillas", {
+        method: "POST",
+    });
+}
+
+// =============== PDF DE PROYECTO ===============
+
+async function _descargarBlob(url, filename) {
+    const token = localStorage.getItem("token");
+    const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+        throw new Error(`Error al generar el PDF (${response.status})`);
+    }
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objectUrl);
+}
+
+export async function descargarPdfProyecto(proyectoId) {
+    await _descargarBlob(
+        `${API_URL}/proyectos/${proyectoId}/pdf`,
+        `proyecto_${proyectoId.substring(0, 8).toUpperCase()}.pdf`
+    );
+}
+
+export async function descargarPdfClienteProyecto(proyectoId) {
+    await _descargarBlob(
+        `${API_URL}/proyectos/${proyectoId}/pdf-cliente`,
+        `proyecto_cliente_${proyectoId.substring(0, 8).toUpperCase()}.pdf`
+    );
+}
+
+// =============== MATERIALES DE UN PROYECTO (edición en vivo) ===============
+
+export async function agregarMaterialProyecto(proyectoId, payload) {
+    // payload: { material_id, cantidad, externo } | { nombre_externo, precio_externo, cantidad }
+    return fetchAPI(`/proyectos/${proyectoId}/materiales`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+    });
+}
+
+export async function actualizarCantidadMaterial(proyectoId, idPm, cantidad, ajustarStock) {
+    return fetchAPI(`/proyectos/${proyectoId}/materiales/${idPm}`, {
+        method: "PUT",
+        body: JSON.stringify({ cantidad, ajustar_stock: ajustarStock }),
+    });
+}
+
+export async function quitarMaterialProyecto(proyectoId, idPm, devolverStock) {
+    return fetchAPI(
+        `/proyectos/${proyectoId}/materiales/${idPm}?devolver_stock=${devolverStock}`,
+        { method: "DELETE" }
+    );
 }
 
 // =============== VERIFICACIÓN DE CONTRASEÑA ===============

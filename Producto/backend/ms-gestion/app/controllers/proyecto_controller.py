@@ -33,3 +33,21 @@ def delete(db: Session, proyecto_id: str):
 
 def get_materiales_planeados(db: Session, proyecto_id: str):
     return proyecto_service.obtener_materiales_planeados(db, proyecto_id)
+
+
+def agregar_material(db: Session, proyecto_id: str, cantidad, usuario_id: str,
+                     externo: bool = False, material_id: str = None,
+                     nombre_externo: str = None, precio_externo=None):
+    return proyecto_service.agregar_material_a_proyecto(
+        db, proyecto_id, cantidad, usuario_id,
+        externo=externo, material_id=material_id,
+        nombre_externo=nombre_externo, precio_externo=precio_externo,
+    )
+
+
+def actualizar_cantidad_material(db: Session, proyecto_id: str, id_pm: str, cantidad, ajustar_stock: bool, usuario_id: str):
+    return proyecto_service.actualizar_cantidad_material(db, proyecto_id, id_pm, cantidad, ajustar_stock, usuario_id)
+
+
+def quitar_material(db: Session, proyecto_id: str, id_pm: str, devolver_stock: bool, usuario_id: str):
+    return proyecto_service.quitar_material_de_proyecto(db, proyecto_id, id_pm, devolver_stock, usuario_id)

@@ -11,6 +11,7 @@ import AgregarProducto from "../pages/AgregarProducto";
 import ProtectedRoute from "./ProtectedRoute";
 import NuevoProyecto from "../pages/NuevoProyecto";
 import Solicitudes from "../pages/Solicitudes";
+import Plantillas from "../pages/Plantillas";
 
 function AppRoutes() {
     return (
@@ -90,6 +91,14 @@ function AppRoutes() {
                     element={
                         <ProtectedRoute>
                             <Solicitudes />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/plantillas"
+                    element={
+                        <ProtectedRoute>
+                            <Plantillas />
                         </ProtectedRoute>
                     }
                 />

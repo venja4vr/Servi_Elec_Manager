@@ -13,6 +13,7 @@ function Sidebar() {
     const [cantidadPendientes, setCantidadPendientes] = useState(0);
     const rol = getUsuarioRol();
     const esSuperAdmin = rol === "S";
+    const esAdmin = rol === "A" || rol === "S";
 
     useEffect(() => {
         actualizarContador();
@@ -83,7 +84,7 @@ function Sidebar() {
                     className={`sidebar-item ${isActive("/buscador") ? "active" : ""}`}
                     onClick={() => navigate("/buscador")}
                 >
-                    Buscador
+                    Comparador
                 </button>
 
                 <button
@@ -109,6 +110,15 @@ function Sidebar() {
                 >
                     Inventario
                 </button>
+
+                {esAdmin && (
+                    <button
+                        className={`sidebar-item ${isActive("/plantillas") ? "active" : ""}`}
+                        onClick={() => navigate("/plantillas")}
+                    >
+                        Plantillas
+                    </button>
+                )}
 
                 {esSuperAdmin && (
                     <button

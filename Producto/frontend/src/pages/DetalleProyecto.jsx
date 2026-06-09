@@ -3,8 +3,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
 import {
     getProyecto,
+    getMateriales,
     getMaterialesPlaneadosDeProyecto,
     actualizarProyecto,
+    agregarMaterialProyecto,
+    actualizarCantidadMaterial,
+    quitarMaterialProyecto,
+    descargarPdfProyecto,
+    descargarPdfClienteProyecto,
 } from "../services/api";
 import {
     validarTexto,
@@ -22,7 +28,25 @@ function DetalleProyecto() {
     const [error, setError] = useState("");
     const [mensajeOk, setMensajeOk] = useState("");
 
+    const [descargandoPdf, setDescargandoPdf] = useState(false);
+    const [descargandoPdfCliente, setDescargandoPdfCliente] = useState(false);
+
     const [mostrarEditar, setMostrarEditar] = useState(false);
+
+    // ── Estado gestión de materiales ──────────────────────────────────────────
+    const [materialesEdicion, setMaterialesEdicion] = useState([]);
+    const [todosMats, setTodosMats] = useState([]);
+    const [modoMaterial, setModoMaterial] = useState("inventario"); // "inventario" | "externo_nuevo"
+    const [busqMat, setBusqMat] = useState("");
+    const [matSelec, setMatSelec] = useState(null);
+    const [cantNuevo, setCantNuevo] = useState("1");
+    const [externoNuevo, setExternoNuevo] = useState(false);
+    const [nombreExterno, setNombreExterno] = useState("");
+    const [precioExterno, setPrecioExterno] = useState("0");
+    const [errNuevoMat, setErrNuevoMat] = useState("");
+    const [guardandoMat, setGuardandoMat] = useState(false);
+    const [cantEdits, setCantEdits] = useState({});
+    const [confirmDlg, setConfirmDlg] = useState(null);
     const [datosEdicion, setDatosEdicion] = useState({});
     const [guardando, setGuardando] = useState(false);
 
@@ -99,10 +123,10 @@ function DetalleProyecto() {
     };
 
     const vEdNombreProyecto = (v) => validarTexto(v, { minimo: 3, maximo: 50, etiqueta: "El nombre del proyecto" });
-    const vEdTipoProyecto = (v) => validarTextoOpcional(v, { maximo: 25, etiqueta: "El tipo de proyecto" });
+    const vEdTipoProyecto = (v) => (!v ? "Selecciona un tipo de proyecto" : "");
     const vEdNombreCliente = (v) => validarTexto(v, { minimo: 3, maximo: 50, etiqueta: "El nombre del cliente" });
     const vEdTelefono = (v) => validarTelefono(v, { obligatorio: false });
-    const vEdDireccion = (v) => validarTextoOpcional(v, { maximo: 150, etiqueta: "La dirección" });
+    const vEdDireccion = (v) => validarTextoOpcional(v, { maximo: 200, etiqueta: "La dirección" });
     const vEdPresupuesto = (v, etiqueta) => {
         if (!v) return "";
         return validarPrecio(v, { etiqueta });
@@ -111,12 +135,36 @@ function DetalleProyecto() {
     const vEdFechas = (inicio, termino) => {
         if (!inicio || !termino) return "";
         if (new Date(termino) < new Date(inicio)) {
-            return "La fecha de término no puede ser anterior a la fecha de inicio";
+            return "La fecha de término debe ser posterior a la fecha de inicio";
         }
         return "";
     };
 
-    const abrirEditar = () => {
+    const handleDescargarPdf = async () => {
+        setDescargandoPdf(true);
+        setError("");
+        try {
+            await descargarPdfProyecto(id);
+        } catch (err) {
+            setError(err.message || "Error al generar el PDF");
+        } finally {
+            setDescargandoPdf(false);
+        }
+    };
+
+    const handleDescargarPdfCliente = async () => {
+        setDescargandoPdfCliente(true);
+        setError("");
+        try {
+            await descargarPdfClienteProyecto(id);
+        } catch (err) {
+            setError(err.message || "Error al generar el PDF cliente");
+        } finally {
+            setDescargandoPdfCliente(false);
+        }
+    };
+
+    const abrirEditar = async () => {
         setDatosEdicion({
             nombre_proyecto: proyecto.nombre_proyecto || "",
             tipo_proyecto: proyecto.tipo_proyecto || "",
@@ -139,11 +187,162 @@ function DetalleProyecto() {
         setErrEdPresupuestoEst("");
         setErrEdPresupuestoFinal("");
         setErrEdObservaciones("");
+        // Inicializar gestión de materiales
+        setMaterialesEdicion([...materiales]);
+        setCantEdits({});
+        setModoMaterial("inventario");
+        setBusqMat("");
+        setMatSelec(null);
+        setCantNuevo("1");
+        setExternoNuevo(false);
+        setNombreExterno("");
+        setPrecioExterno("0");
+        setErrNuevoMat("");
+        setConfirmDlg(null);
         setMostrarEditar(true);
+        // Cargar catálogo de materiales en background (para autocomplete)
+        try {
+            const todos = await getMateriales();
+            setTodosMats(todos);
+        } catch (_) {
+            // non-critical: no afecta el formulario principal
+        }
     };
 
     const handleCambioCampo = (campo, valor) => {
         setDatosEdicion((prev) => ({ ...prev, [campo]: valor }));
+    };
+
+    // ── Handlers de gestión de materiales ────────────────────────────────────
+    const refrescarMateriales = async () => {
+        const refreshed = await getMaterialesPlaneadosDeProyecto(id);
+        setMateriales(refreshed);
+        setMaterialesEdicion(refreshed);
+    };
+
+    const iniciarAgregarMaterial = () => {
+        const cant = Number(cantNuevo);
+        if (!cant || cant <= 0) { setErrNuevoMat("La cantidad debe ser mayor a 0"); return; }
+
+        if (modoMaterial === "externo_nuevo") {
+            if (!nombreExterno.trim()) { setErrNuevoMat("Escribe el nombre del material externo"); return; }
+            setErrNuevoMat("");
+            ejecutarAgregarExternoNuevo();
+            return;
+        }
+
+        // modo inventario
+        if (!matSelec) { setErrNuevoMat("Selecciona un material de la lista"); return; }
+        if (materialesEdicion.find((m) => m.material_id === matSelec.id_material)) {
+            setErrNuevoMat("Este material ya está en el proyecto"); return;
+        }
+        setErrNuevoMat("");
+
+        if (proyecto.estado === "en_curso" && !externoNuevo) {
+            setConfirmDlg({
+                titulo: "¿Descontar del inventario?",
+                mensaje: `Se agregarán ${cant} uds. de "${matSelec.nombre_material}" al proyecto.\n\nSi lo provee el cliente o no sale del stock de Servi Elec, elige NO.`,
+                btn1: { label: "NO, material externo", variant: "outline-secondary", onClick: () => ejecutarAgregarInventario(true) },
+                btn2: { label: "SÍ, descontar del inventario", variant: "primary", onClick: () => ejecutarAgregarInventario(false) },
+            });
+        } else {
+            ejecutarAgregarInventario(externoNuevo);
+        }
+    };
+
+    const ejecutarAgregarInventario = async (esExterno) => {
+        setConfirmDlg(null);
+        setGuardandoMat(true);
+        try {
+            await agregarMaterialProyecto(id, { material_id: matSelec.id_material, cantidad: Number(cantNuevo), externo: esExterno });
+            await refrescarMateriales();
+            setMatSelec(null); setBusqMat(""); setCantNuevo("1"); setExternoNuevo(false);
+        } catch (err) {
+            setErrNuevoMat(err.message || "Error al agregar material");
+        } finally {
+            setGuardandoMat(false);
+        }
+    };
+
+    const ejecutarAgregarExternoNuevo = async () => {
+        setGuardandoMat(true);
+        try {
+            await agregarMaterialProyecto(id, {
+                nombre_externo: nombreExterno.trim(),
+                precio_externo: Number(precioExterno) || 0,
+                cantidad: Number(cantNuevo),
+            });
+            await refrescarMateriales();
+            setNombreExterno(""); setPrecioExterno("0"); setCantNuevo("1");
+        } catch (err) {
+            setErrNuevoMat(err.message || "Error al agregar material externo");
+        } finally {
+            setGuardandoMat(false);
+        }
+    };
+
+    const iniciarQuitarMaterial = (m) => {
+        // Externo (inventario marcado o nuevo) o pendiente → sin confirmación
+        if (m.externo || proyecto.estado === "pendiente") {
+            ejecutarQuitarMaterial(m, false); return;
+        }
+        setConfirmDlg({
+            titulo: "¿Devolver al inventario?",
+            mensaje: `¿Devolver ${Number(m.cantidad_planeada)} uds. de "${m.nombre_material}" al stock?`,
+            btn1: { label: "NO, material ya consumido", variant: "outline-secondary", onClick: () => ejecutarQuitarMaterial(m, false) },
+            btn2: { label: "SÍ, devolver al stock", variant: "success", onClick: () => ejecutarQuitarMaterial(m, true) },
+        });
+    };
+
+    const ejecutarQuitarMaterial = async (m, devolverStock) => {
+        setConfirmDlg(null);
+        setGuardandoMat(true);
+        try {
+            await quitarMaterialProyecto(id, m.id_pm, devolverStock);
+            await refrescarMateriales();
+            setCantEdits((prev) => { const n = { ...prev }; delete n[m.id_pm]; return n; });
+        } catch (err) {
+            setErrNuevoMat(err.message || "Error al eliminar material");
+        } finally {
+            setGuardandoMat(false);
+        }
+    };
+
+    const iniciarCambiarCantidad = async (m) => {
+        const nuevaCant = Number(cantEdits[m.id_pm]);
+        if (!nuevaCant || nuevaCant <= 0) {
+            setCantEdits((prev) => ({ ...prev, [m.id_pm]: String(Number(m.cantidad_planeada)) })); return;
+        }
+        if (nuevaCant === Number(m.cantidad_planeada)) return;
+
+        if (proyecto.estado === "pendiente" || m.externo) {
+            await ejecutarCambiarCantidad(m, nuevaCant, false); return;
+        }
+        const diff = nuevaCant - Number(m.cantidad_planeada);
+        if (diff > 0) {
+            await ejecutarCambiarCantidad(m, nuevaCant, true);
+        } else {
+            setConfirmDlg({
+                titulo: "¿Devolver diferencia al inventario?",
+                mensaje: `Reducción de "${m.nombre_material}": ${Number(m.cantidad_planeada)} → ${nuevaCant} uds.\n¿Devolver ${Math.abs(diff)} uds. al stock?`,
+                btn1: { label: "NO, no devolver", variant: "outline-secondary", onClick: () => ejecutarCambiarCantidad(m, nuevaCant, false) },
+                btn2: { label: "SÍ, devolver diferencia", variant: "success", onClick: () => ejecutarCambiarCantidad(m, nuevaCant, true) },
+            });
+        }
+    };
+
+    const ejecutarCambiarCantidad = async (m, nuevaCant, ajustarStock) => {
+        setConfirmDlg(null);
+        setGuardandoMat(true);
+        try {
+            await actualizarCantidadMaterial(id, m.id_pm, nuevaCant, ajustarStock);
+            await refrescarMateriales();
+        } catch (err) {
+            setErrNuevoMat(err.message || "Error al cambiar cantidad");
+            setCantEdits((prev) => ({ ...prev, [m.id_pm]: String(Number(m.cantidad_planeada)) }));
+        } finally {
+            setGuardandoMat(false);
+        }
     };
 
     const confirmarEditar = async () => {
@@ -258,6 +457,20 @@ function DetalleProyecto() {
                                 Editar proyecto
                             </button>
                         )}
+                        <button
+                            className="btn btn-primary btn-sm"
+                            onClick={handleDescargarPdf}
+                            disabled={descargandoPdf}
+                        >
+                            {descargandoPdf ? "Generando..." : "PDF Empresa"}
+                        </button>
+                        <button
+                            className="btn btn-outline-secondary btn-sm"
+                            onClick={handleDescargarPdfCliente}
+                            disabled={descargandoPdfCliente}
+                        >
+                            {descargandoPdfCliente ? "Generando..." : "PDF Cliente"}
+                        </button>
                         <button onClick={() => navigate("/proyectos")}>
                             Volver
                         </button>
@@ -360,11 +573,6 @@ function DetalleProyecto() {
                             </span>
                         </div>
 
-                        {proyecto.estado === "en_curso" && (
-                            <div className="alert alert-info">
-                                Proyecto en ejecución. Los materiales ya fueron descontados del inventario.
-                            </div>
-                        )}
                         {proyecto.estado === "pendiente" && (
                             <div className="alert alert-warning">
                                 Proyecto pendiente. Stock aún no descontado.
@@ -418,7 +626,7 @@ function DetalleProyecto() {
                         tabIndex="-1"
                         style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
                     >
-                        <div className="modal-dialog modal-dialog-centered modal-lg">
+                        <div className="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
                             <div className="modal-content">
                                 <div className="modal-header">
                                     <h5 className="modal-title">Editar proyecto</h5>
@@ -453,8 +661,8 @@ function DetalleProyecto() {
                                                 value={datosEdicion.telefono_cliente}
                                                 onChange={(e) => handleCambioCampo("telefono_cliente", e.target.value)}
                                                 onBlur={() => setErrEdTelefono(vEdTelefono(datosEdicion.telefono_cliente))}
-                                                maxLength={15}
-                                                placeholder="56912345678"
+                                                maxLength={20}
+                                                placeholder="+56 9 1234 5678"
                                             />
                                             {errEdTelefono && (
                                                 <div className="invalid-feedback">{errEdTelefono}</div>
@@ -468,7 +676,7 @@ function DetalleProyecto() {
                                                 value={datosEdicion.direccion_cliente}
                                                 onChange={(e) => handleCambioCampo("direccion_cliente", e.target.value)}
                                                 onBlur={() => setErrEdDireccion(vEdDireccion(datosEdicion.direccion_cliente))}
-                                                maxLength={150}
+                                                maxLength={200}
                                             />
                                             {errEdDireccion && (
                                                 <div className="invalid-feedback">{errEdDireccion}</div>
@@ -494,14 +702,18 @@ function DetalleProyecto() {
                                         </div>
                                         <div className="col-md-6">
                                             <label className="form-label">Tipo de proyecto</label>
-                                            <input
-                                                type="text"
-                                                className={`form-control ${errEdTipoProyecto ? "is-invalid" : ""}`}
+                                            <select
+                                                className={`form-select ${errEdTipoProyecto ? "is-invalid" : ""}`}
                                                 value={datosEdicion.tipo_proyecto}
                                                 onChange={(e) => handleCambioCampo("tipo_proyecto", e.target.value)}
                                                 onBlur={() => setErrEdTipoProyecto(vEdTipoProyecto(datosEdicion.tipo_proyecto))}
-                                                maxLength={25}
-                                            />
+                                            >
+                                                <option value="">Sin especificar</option>
+                                                <option value="Residencial">Residencial</option>
+                                                <option value="Comercial">Comercial</option>
+                                                <option value="Industrial">Industrial</option>
+                                                <option value="Chatbot">Chatbot (WhatsApp)</option>
+                                            </select>
                                             {errEdTipoProyecto && (
                                                 <div className="invalid-feedback">{errEdTipoProyecto}</div>
                                             )}
@@ -576,19 +788,236 @@ function DetalleProyecto() {
                                                 maxLength={500}
                                                 placeholder="Notas adicionales sobre el proyecto"
                                             ></textarea>
-                                            {errEdObservaciones ? (
-                                                <div className="invalid-feedback">{errEdObservaciones}</div>
-                                            ) : (
-                                                <small className="text-muted">
-                                                    Máximo 500 caracteres
+                                            <div className="d-flex justify-content-between align-items-start mt-1">
+                                                {errEdObservaciones
+                                                    ? <div className="text-danger small">{errEdObservaciones}</div>
+                                                    : <span />
+                                                }
+                                                <small className={`text-${(datosEdicion.observaciones || "").length >= 450 ? "warning" : "muted"}`}>
+                                                    {(datosEdicion.observaciones || "").length}/500
                                                 </small>
-                                            )}
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div className="alert alert-info mt-3 mb-0 small">
-                                        Los materiales del proyecto no se editan desde acá. Para cambios en materiales, cancela el proyecto y crea uno nuevo.
-                                    </div>
+                                    {/* ── MATERIALES DEL PROYECTO ─────────────── */}
+                                    <hr className="my-4" />
+                                    <h6 className="fw-bold mb-3">
+                                        {sePuedeEditar ? "Materiales del proyecto" : "Materiales utilizados"}
+                                    </h6>
+
+                                    {errNuevoMat && (
+                                        <div className="alert alert-danger small py-1 mb-2">
+                                            {errNuevoMat}
+                                        </div>
+                                    )}
+
+                                    {/* Tabla de materiales actuales */}
+                                    {materialesEdicion.length === 0 ? (
+                                        <p className="text-muted small">Sin materiales asignados.</p>
+                                    ) : (
+                                        <div className="table-responsive mb-3">
+                                            <table className="table table-sm table-bordered mb-0">
+                                                <thead className="table-light">
+                                                    <tr>
+                                                        <th>Material</th>
+                                                        <th style={{ width: "100px" }}>Cant.</th>
+                                                        <th style={{ width: "110px" }}>Precio unit.</th>
+                                                        <th style={{ width: "90px" }}>Stock</th>
+                                                        {sePuedeEditar && <th style={{ width: "70px" }}></th>}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {materialesEdicion.map((m) => (
+                                                        <tr key={m.id_pm}>
+                                                            <td>
+                                                                {m.nombre_material}
+                                                                {m.es_externo_nuevo && (
+                                                                    <span className="badge bg-warning text-dark ms-2 small">externo nuevo</span>
+                                                                )}
+                                                                {m.externo && !m.es_externo_nuevo && (
+                                                                    <span className="badge bg-secondary ms-2 small">externo</span>
+                                                                )}
+                                                            </td>
+                                                            <td>
+                                                                {sePuedeEditar ? (
+                                                                    <input
+                                                                        type="number"
+                                                                        className="form-control form-control-sm"
+                                                                        value={cantEdits[m.id_pm] ?? Number(m.cantidad_planeada)}
+                                                                        onChange={(e) => setCantEdits((prev) => ({ ...prev, [m.id_pm]: e.target.value }))}
+                                                                        onBlur={() => iniciarCambiarCantidad(m)}
+                                                                        min="1"
+                                                                        disabled={guardandoMat}
+                                                                    />
+                                                                ) : (
+                                                                    <span>{Number(m.cantidad_planeada)}</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="small">
+                                                                {m.precio_unitario && Number(m.precio_unitario) > 0
+                                                                    ? formatearPrecio(m.precio_unitario)
+                                                                    : <span className="text-muted">—</span>
+                                                                }
+                                                            </td>
+                                                            <td className="small">
+                                                                {m.stock_actual === null
+                                                                    ? <span className="text-muted">N/A</span>
+                                                                    : m.stock_actual === 0
+                                                                        ? <span className="text-danger fw-bold">⚠ 0</span>
+                                                                        : m.stock_actual
+                                                                }
+                                                            </td>
+                                                            {sePuedeEditar && (
+                                                                <td>
+                                                                    <button
+                                                                        className="btn btn-outline-danger btn-sm"
+                                                                        onClick={() => iniciarQuitarMaterial(m)}
+                                                                        disabled={guardandoMat}
+                                                                    >
+                                                                        Quitar
+                                                                    </button>
+                                                                </td>
+                                                            )}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+
+                                    {/* Formulario para agregar (solo en estados editables) */}
+                                    {sePuedeEditar && (
+                                        <div className="border rounded p-3 bg-light">
+                                            <div className="d-flex align-items-center gap-2 mb-3">
+                                                <span className="small fw-bold">Agregar material:</span>
+                                                <div className="btn-group btn-group-sm" role="group">
+                                                    <button
+                                                        type="button"
+                                                        className={`btn ${modoMaterial === "inventario" ? "btn-primary" : "btn-outline-primary"}`}
+                                                        onClick={() => { setModoMaterial("inventario"); setErrNuevoMat(""); }}
+                                                    >
+                                                        Del inventario
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className={`btn ${modoMaterial === "externo_nuevo" ? "btn-warning" : "btn-outline-warning"}`}
+                                                        onClick={() => { setModoMaterial("externo_nuevo"); setErrNuevoMat(""); }}
+                                                    >
+                                                        Externo nuevo
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {modoMaterial === "inventario" ? (
+                                                <div className="row g-2 align-items-end">
+                                                    <div className="col-md-5 position-relative">
+                                                        <label className="form-label form-label-sm mb-1">Buscar en inventario</label>
+                                                        <input
+                                                            type="text"
+                                                            className="form-control form-control-sm"
+                                                            placeholder="Nombre del material..."
+                                                            value={matSelec ? matSelec.nombre_material : busqMat}
+                                                            onChange={(e) => { setBusqMat(e.target.value); setMatSelec(null); }}
+                                                        />
+                                                        {!matSelec && busqMat.length > 0 && (() => {
+                                                            const filtrados = todosMats
+                                                                .filter((m) =>
+                                                                    m.nombre_material.toLowerCase().includes(busqMat.toLowerCase()) &&
+                                                                    !materialesEdicion.find((me) => me.material_id === m.id_material)
+                                                                )
+                                                                .slice(0, 8);
+                                                            return filtrados.length > 0 ? (
+                                                                <ul className="list-group position-absolute w-100 shadow-sm" style={{ zIndex: 1080, top: "100%" }}>
+                                                                    {filtrados.map((m) => (
+                                                                        <li
+                                                                            key={m.id_material}
+                                                                            className="list-group-item list-group-item-action py-1 small"
+                                                                            style={{ cursor: "pointer" }}
+                                                                            onMouseDown={() => { setMatSelec(m); setBusqMat(m.nombre_material); }}
+                                                                        >
+                                                                            <span className="fw-semibold">{m.nombre_material}</span>
+                                                                            <span className="text-muted ms-2">— {formatearPrecio(m.precio_unitario)} —</span>
+                                                                            {m.stock_actual === 0
+                                                                                ? <span className="text-danger ms-1">⚠ Sin stock</span>
+                                                                                : <span className="text-muted ms-1">Stock: {m.stock_actual}</span>
+                                                                            }
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            ) : null;
+                                                        })()}
+                                                        {matSelec && (
+                                                            <div className="mt-1 small text-muted">
+                                                                {formatearPrecio(matSelec.precio_unitario)} —{" "}
+                                                                {matSelec.stock_actual === 0
+                                                                    ? <span className="text-danger">⚠ Sin stock</span>
+                                                                    : <>Stock: <strong>{matSelec.stock_actual}</strong></>
+                                                                }
+                                                                {Number(cantNuevo) > matSelec.stock_actual && !externoNuevo && (
+                                                                    <span className="text-warning ms-2">⚠ Cantidad supera el stock</span>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="col-md-2">
+                                                        <label className="form-label form-label-sm mb-1">Cantidad</label>
+                                                        <input type="number" className="form-control form-control-sm" value={cantNuevo} onChange={(e) => setCantNuevo(e.target.value)} min="1" />
+                                                    </div>
+                                                    <div className="col-md-3 d-flex align-items-center gap-2 pt-4">
+                                                        <input type="checkbox" className="form-check-input" id="chkExterno" checked={externoNuevo} onChange={(e) => setExternoNuevo(e.target.checked)} />
+                                                        <label className="form-check-label small" htmlFor="chkExterno">No descontar stock</label>
+                                                    </div>
+                                                    <div className="col-md-2 pt-3">
+                                                        <button className="btn btn-primary btn-sm w-100" onClick={iniciarAgregarMaterial} disabled={guardandoMat || !matSelec}>
+                                                            {guardandoMat ? "..." : "Agregar"}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                /* Modo externo nuevo */
+                                                <div className="row g-2 align-items-end">
+                                                    <div className="col-md-5">
+                                                        <label className="form-label form-label-sm mb-1">Nombre del material *</label>
+                                                        <input
+                                                            type="text"
+                                                            className="form-control form-control-sm"
+                                                            placeholder="Ej: Cable coaxial RG6"
+                                                            value={nombreExterno}
+                                                            onChange={(e) => setNombreExterno(e.target.value)}
+                                                            maxLength={200}
+                                                        />
+                                                    </div>
+                                                    <div className="col-md-3">
+                                                        <label className="form-label form-label-sm mb-1">Precio unitario (CLP)</label>
+                                                        <input
+                                                            type="number"
+                                                            className="form-control form-control-sm"
+                                                            value={precioExterno}
+                                                            onChange={(e) => setPrecioExterno(e.target.value)}
+                                                            min="0"
+                                                            placeholder="0"
+                                                        />
+                                                    </div>
+                                                    <div className="col-md-2">
+                                                        <label className="form-label form-label-sm mb-1">Cantidad</label>
+                                                        <input type="number" className="form-control form-control-sm" value={cantNuevo} onChange={(e) => setCantNuevo(e.target.value)} min="1" />
+                                                    </div>
+                                                    <div className="col-md-2">
+                                                        <button className="btn btn-warning btn-sm w-100" onClick={iniciarAgregarMaterial} disabled={guardandoMat || !nombreExterno.trim()}>
+                                                            {guardandoMat ? "..." : "Agregar"}
+                                                        </button>
+                                                    </div>
+                                                    <div className="col-12">
+                                                        <small className="text-muted">
+                                                            ℹ Este material <strong>no</strong> se registra en el inventario y <strong>no descuenta stock</strong>.
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                 </div>
                                 <div className="modal-footer">
                                     <button
@@ -603,11 +1032,55 @@ function DetalleProyecto() {
                                         type="button"
                                         className="btn btn-primary"
                                         onClick={confirmarEditar}
-                                        disabled={guardando}
+                                        disabled={guardando || !!(
+                                            errEdNombreProyecto || errEdTipoProyecto ||
+                                            errEdNombreCliente || errEdTelefono ||
+                                            errEdDireccion || errEdFechaTermino ||
+                                            errEdPresupuestoEst || errEdPresupuestoFinal ||
+                                            errEdObservaciones
+                                        )}
                                     >
                                         {guardando ? "Guardando..." : "Guardar cambios"}
                                     </button>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ── Diálogo de confirmación (sobre el modal) ─────────────── */}
+                {confirmDlg && (
+                    <div
+                        style={{
+                            position: "fixed",
+                            inset: 0,
+                            backgroundColor: "rgba(0,0,0,0.65)",
+                            zIndex: 1070,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                        }}
+                    >
+                        <div className="card shadow" style={{ maxWidth: 440, margin: "0 1rem" }}>
+                            <div className="card-header fw-bold">{confirmDlg.titulo}</div>
+                            <div className="card-body">
+                                <p className="mb-0" style={{ whiteSpace: "pre-line" }}>
+                                    {confirmDlg.mensaje}
+                                </p>
+                            </div>
+                            <div className="card-footer d-flex gap-2 justify-content-end flex-wrap">
+                                <button
+                                    className={`btn btn-${confirmDlg.btn1.variant} btn-sm`}
+                                    onClick={confirmDlg.btn1.onClick}
+                                >
+                                    {confirmDlg.btn1.label}
+                                </button>
+                                <button
+                                    className={`btn btn-${confirmDlg.btn2.variant} btn-sm`}
+                                    onClick={confirmDlg.btn2.onClick}
+                                >
+                                    {confirmDlg.btn2.label}
+                                </button>
                             </div>
                         </div>
                     </div>

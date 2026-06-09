@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 from decimal import Decimal
+from datetime import datetime
 from app.schemas.categoria import CategoriaOut
 
 class MaterialCreate(BaseModel):
@@ -29,6 +30,8 @@ class MaterialOut(BaseModel):
     categoria_id: str
     stock_bajo: bool
     categoria: Optional[CategoriaOut] = None
+    precio_sodimac_actual: Optional[Decimal] = None
+    precio_sodimac_actualizado: Optional[datetime] = None
 
     class Config:
         from_attributes = True
