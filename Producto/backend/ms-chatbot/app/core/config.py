@@ -18,3 +18,6 @@ MS_GESTION_TOKEN = os.getenv("MS_GESTION_TOKEN", "")
 
 # Sesiones
 SESSION_TTL_MINUTES = int(os.getenv("SESSION_TTL_MINUTES", "60"))
+
+# Notificaciones al administrador
+ADMIN_PHONE_NUMBER = os.getenv("ADMIN_PHONE_NUMBER", "")

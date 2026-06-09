@@ -15,11 +15,25 @@ CATEGORIAS = {
 PALABRAS_REINICIO = {"hola", "menu", "menú", "inicio", "restart", "volver", "empezar"}
 
 
+# Las 38 comunas de la Quinta Región válidas
+COMUNAS_QUINTA_REGION = {
+    "valparaíso", "valparaiso", "viña del mar", "vina del mar",
+    "quilpué", "quilpue", "villa alemana", "concón", "concon",
+    "quintero", "puchuncaví", "puchuncavi", "casablanca",
+    "san antonio", "santo domingo", "cartagena", "el tabo",
+    "el quisco", "algarrobo", "san pedro", "el quisco",
+    "quillota", "la calera", "la cruz", "nogales", "hijuelas",
+    "limache", "olmué", "olmue", "los andes", "san esteban",
+    "calle larga", "rinconada", "san felipe", "putaendo",
+    "santa maría", "santa maria", "panquehue", "llaillay",
+    "catemu", "isla de pascua", "juan fernández", "juan fernandez",
+}
+
 # Las preguntas de la ficha, en orden
-# Cada tupla es: (campo_en_sesion, pregunta_que_se_muestra)
 PREGUNTAS_FICHA: List[Tuple[str, str]] = [
     ("nombre_cliente",  "¿Cuál es tu nombre completo?"),
-    ("direccion",       "¿Cuál es la dirección donde se realizará el trabajo?"),
+    ("direccion",       "¿Cuál es la calle y número donde se realizará el trabajo?"),
+    ("comuna",          "¿En qué comuna? (debe ser de la Quinta Región)"),
     ("fecha_preferida", "¿Tienes alguna fecha preferida para el inicio? (o escribe sin preferencia)"),
     ("observaciones",   "¿Alguna observación adicional? (o escribe ninguna)"),
 ]
@@ -222,22 +236,32 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
         _, pregunta = PREGUNTAS_FICHA[0] # Primera pregunta: nombre
         return f"¡Perfecto! Necesito algunos datos.\n\n{pregunta}"
 
-    # ── Recopilación de datos de la ficha ────────────────────
+# ── Recopilación de datos de la ficha ────────────────────
     if estado == EstadoChat.RECOPILANDO_DATOS:
-        # paso_recopilacion indica en qué pregunta estamos (0, 1, 2, 3)
         campo, _ = PREGUNTAS_FICHA[sesion.paso_recopilacion]
-        # Guardar la respuesta en el campo correspondiente de la sesión
-        # setattr(sesion, "nombre_cliente", "Carlos") es igual a sesion.nombre_cliente = "Carlos"
-        setattr(sesion, campo, texto)
+
+        # Validación especial para la comuna
+        if campo == "comuna":
+            texto_lower = texto.strip().lower()
+            if texto_lower not in COMUNAS_QUINTA_REGION:
+                return (
+                    "⚠️ Esa comuna no pertenece a la Quinta Región.\n\n"
+                    "Por favor escribe una comuna válida, por ejemplo:\n"
+                    "Valparaíso, Viña del Mar, Quilpué, Villa Alemana, "
+                    "San Antonio, Quillota, Los Andes, San Felipe..."
+                )
+            # Guardar con la primera letra en mayúscula
+            setattr(sesion, campo, texto.strip().title())
+        else:
+            setattr(sesion, campo, texto)
+
         sesion.paso_recopilacion += 1
 
         if sesion.paso_recopilacion < len(PREGUNTAS_FICHA):
-            # Todavía quedan preguntas → hacer la siguiente
             _, siguiente = PREGUNTAS_FICHA[sesion.paso_recopilacion]
             sesion_service.guardar_sesion(sesion)
             return siguiente
 
-        # Ya respondió todas → crear el proyecto
         sesion_service.guardar_sesion(sesion)
         return _crear_proyecto(sesion)
 
@@ -251,13 +275,13 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
 
 
 def _crear_proyecto(sesion: SesionChat) -> str:
-    # Reúne todos los datos recopilados y llama a ms-gestion
     proyecto = gestion_client.crear_proyecto(
         nombre_cliente  = sesion.nombre_cliente or "Cliente WhatsApp",
         telefono        = sesion.telefono,
         plantilla_id    = sesion.plantilla_id,
         nombre_servicio = sesion.nombre_servicio,
         direccion       = sesion.direccion,
+        comuna          = sesion.comuna,          # ← NUEVA LÍNEA
         fecha_preferida = sesion.fecha_preferida,
         observaciones   = sesion.observaciones,
         precio_estimado = sesion.precio_estimado,
@@ -266,7 +290,26 @@ def _crear_proyecto(sesion: SesionChat) -> str:
     sesion_service.guardar_sesion(sesion)
 
     if proyecto:
+        # Notificar al administrador
+        from app.core.config import ADMIN_PHONE_NUMBER
+        if ADMIN_PHONE_NUMBER:
+            precio_fmt = (
+                f"${sesion.precio_estimado:,.0f}".replace(",", ".")
+                if sesion.precio_estimado
+                else "por evaluar"
+            )
+            msg_admin = (
+                f" *Nueva solicitud recibida*\n\n"
+                f"Cliente: {sesion.nombre_cliente or 'Sin nombre'}\n"
+                f"Servicio: {sesion.nombre_servicio}\n"
+                f"Presupuesto: {precio_fmt}\n"
+                f"Teléfono: +{sesion.telefono}\n\n"
+                f"Revisa la plataforma para aceptar o rechazar."
+            )
+            whatsapp_service.enviar_mensaje(ADMIN_PHONE_NUMBER, msg_admin)
+
         return _texto_proyecto_creado(sesion.nombre_servicio, sesion.nombre_cliente or "")
+
     return (
         "⚠️ Hubo un error al registrar tu solicitud.\n"
         "Contáctanos directamente al +56 9 XXXX XXXX.\n\n"

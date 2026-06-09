@@ -29,7 +29,8 @@ class SesionChat:
     # Datos de la ficha que llena el cliente 
     nombre_cliente:    Optional[str] = None # "Carlos Iturrieta"
     direccion:         Optional[str] = None # "Calle Los Olivos 1420"
-    fecha_preferida:   Optional[str] = None # "24 de abril"
+    comuna:            Optional[str] = None # "Quilpué" 
+    fecha_preferida:   Optional[str] = None
     observaciones:     Optional[str] = None # "ninguna"
 
     # Control interno
