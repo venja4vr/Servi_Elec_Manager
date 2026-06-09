@@ -10,6 +10,7 @@ from app.schemas.proyecto import (
     ProyectoOut,
     ProyectoCreateConMateriales,
 )
+from app.schemas.proyecto_material import AgregarMaterialProyecto, ActualizarMaterialProyecto
 from app.utils.auth import get_current_user, require_admin
 from app.services.pdf_service import generar_pdf_proyecto, generar_pdf_cliente
 
@@ -70,6 +71,51 @@ def descargar_pdf_cliente(
         content=pdf_bytes,
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/{proyecto_id}/materiales", status_code=201)
+def agregar_material(
+    proyecto_id: str,
+    data: AgregarMaterialProyecto,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin),
+):
+    """Agrega material del inventario o un material externo nuevo (sin inventario)."""
+    return proyecto_controller.agregar_material(
+        db, proyecto_id, data.cantidad, current_user["id_usuario"],
+        externo=data.externo,
+        material_id=data.material_id,
+        nombre_externo=data.nombre_externo,
+        precio_externo=data.precio_externo,
+    )
+
+
+@router.put("/{proyecto_id}/materiales/{id_pm}")
+def actualizar_cantidad_material(
+    proyecto_id: str,
+    id_pm: str,
+    data: ActualizarMaterialProyecto,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin),
+):
+    """Actualiza la cantidad de un material en el proyecto (identificado por id_pm)."""
+    return proyecto_controller.actualizar_cantidad_material(
+        db, proyecto_id, id_pm, data.cantidad, data.ajustar_stock, current_user["id_usuario"]
+    )
+
+
+@router.delete("/{proyecto_id}/materiales/{id_pm}")
+def quitar_material(
+    proyecto_id: str,
+    id_pm: str,
+    devolver_stock: bool = Query(False, description="Si True, devuelve el stock descontado"),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_admin),
+):
+    """Elimina un material del proyecto (identificado por id_pm)."""
+    return proyecto_controller.quitar_material(
+        db, proyecto_id, id_pm, devolver_stock, current_user["id_usuario"]
     )
 
 

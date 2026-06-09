@@ -165,14 +165,16 @@ def _validar_stock_disponible(db: Session, proyecto: Proyecto):
 
 def _ejecutar_descuento_stock(db: Session, proyecto: Proyecto, usuario_id: str):
     """
-    Lee los materiales planeados del proyecto, crea movimientos por cada uno
+    Lee los materiales planeados NO externos del proyecto, crea movimientos
     y descuenta el stock real del inventario.
-    Si un material no tiene stock suficiente, se descuenta lo que haya y queda
-    como pendiente (el resto se registra implícitamente por falta de movimiento).
+    Los materiales con externo=True se omiten (nunca tocan el stock interno).
     """
     materiales_planeados = (
         db.query(ProyectoMaterial)
-        .filter(ProyectoMaterial.proyecto_id == proyecto.id_proyecto)
+        .filter(
+            ProyectoMaterial.proyecto_id == proyecto.id_proyecto,
+            ProyectoMaterial.externo == False,  # noqa: E712
+        )
         .all()
     )
 
@@ -183,7 +185,6 @@ def _ejecutar_descuento_stock(db: Session, proyecto: Proyecto, usuario_id: str):
 
         cantidad_a_descontar = min(int(pm.cantidad_planeada), material.stock_actual)
         if cantidad_a_descontar > 0:
-            # Crear movimiento
             mov = Movimiento(
                 id_movimiento=uuid.uuid4().hex,
                 cantidad=cantidad_a_descontar,
@@ -193,8 +194,6 @@ def _ejecutar_descuento_stock(db: Session, proyecto: Proyecto, usuario_id: str):
                 usuario_id=usuario_id,
             )
             db.add(mov)
-
-            # Descontar stock
             material.stock_actual -= cantidad_a_descontar
 
 
@@ -236,20 +235,236 @@ def obtener_materiales_planeados(db: Session, proyecto_id: str):
 
     vinculaciones = (
         db.query(ProyectoMaterial, Material)
-        .join(Material, ProyectoMaterial.material_id == Material.id_material)
+        .outerjoin(Material, ProyectoMaterial.material_id == Material.id_material)
         .filter(ProyectoMaterial.proyecto_id == proyecto_id)
         .all()
     )
 
     resultado = []
     for pm, mat in vinculaciones:
-        resultado.append({
+        resultado.append(_material_dict(pm, mat))
+
+    return resultado
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GESTIÓN DE MATERIALES EN UN PROYECTO EXISTENTE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _material_dict(pm: ProyectoMaterial, mat) -> dict:
+    """Convierte un ProyectoMaterial + Material (puede ser None) a dict estandarizado."""
+    if mat is not None:
+        return {
+            "id_pm": pm.id_pm,
             "material_id": mat.id_material,
             "nombre_material": mat.nombre_material,
             "cantidad_planeada": pm.cantidad_planeada,
             "stock_actual": mat.stock_actual,
             "precio_unitario": mat.precio_unitario,
             "suficiente_stock": mat.stock_actual >= pm.cantidad_planeada,
-        })
+            "externo": bool(pm.externo),
+            "es_externo_nuevo": False,
+        }
+    # Material externo nuevo (sin entrada en el inventario)
+    return {
+        "id_pm": pm.id_pm,
+        "material_id": None,
+        "nombre_material": pm.nombre_material_externo or "Material externo",
+        "cantidad_planeada": pm.cantidad_planeada,
+        "stock_actual": None,
+        "precio_unitario": pm.precio_unitario_externo,
+        "suficiente_stock": True,
+        "externo": True,
+        "es_externo_nuevo": True,
+    }
 
-    return resultado
+
+def agregar_material_a_proyecto(
+    db: Session,
+    proyecto_id: str,
+    cantidad: "Decimal",
+    usuario_id: str,
+    externo: bool = False,
+    material_id: str = None,
+    nombre_externo: str = None,
+    precio_externo: "Decimal" = None,
+) -> dict:
+    proyecto = obtener_proyecto(db, proyecto_id)
+
+    if proyecto.estado in ("finalizado", "cancelado"):
+        raise HTTPException(400, "No se pueden agregar materiales a un proyecto finalizado o cancelado")
+
+    es_externo_nuevo = (material_id is None)
+
+    if not es_externo_nuevo:
+        # Material del inventario — verificar duplicado y existencia
+        pm_existe = (
+            db.query(ProyectoMaterial)
+            .filter(ProyectoMaterial.proyecto_id == proyecto_id, ProyectoMaterial.material_id == material_id)
+            .first()
+        )
+        if pm_existe:
+            raise HTTPException(409, "El material ya está asignado a este proyecto")
+
+        material = db.query(Material).filter(Material.id_material == material_id).first()
+        if not material:
+            raise HTTPException(404, "Material no encontrado")
+
+        cantidad_int = int(cantidad)
+
+        # Si en_curso y no externo → descontar stock inmediatamente
+        if proyecto.estado == "en_curso" and not externo:
+            if material.stock_actual < cantidad_int:
+                raise HTTPException(
+                    422,
+                    f"Stock insuficiente. Disponible: {material.stock_actual}, necesario: {cantidad_int}",
+                )
+            material.stock_actual -= cantidad_int
+            db.add(Movimiento(
+                id_movimiento=uuid.uuid4().hex,
+                cantidad=cantidad_int,
+                fecha_salida=datetime.utcnow(),
+                proyecto_id=proyecto_id,
+                material_id=material_id,
+                usuario_id=usuario_id,
+            ))
+
+        pm = ProyectoMaterial(
+            proyecto_id=proyecto_id,
+            material_id=material_id,
+            cantidad_planeada=cantidad,
+            externo=externo,
+        )
+        db.add(pm)
+        db.commit()
+        db.refresh(pm)
+        db.refresh(material)
+        return _material_dict(pm, material)
+
+    else:
+        # Material externo nuevo — nunca toca stock
+        pm = ProyectoMaterial(
+            proyecto_id=proyecto_id,
+            material_id=None,
+            cantidad_planeada=cantidad,
+            externo=True,
+            nombre_material_externo=(nombre_externo or "").strip(),
+            precio_unitario_externo=precio_externo,
+        )
+        db.add(pm)
+        db.commit()
+        db.refresh(pm)
+        return _material_dict(pm, None)
+
+
+def actualizar_cantidad_material(
+    db: Session,
+    proyecto_id: str,
+    id_pm: str,
+    nueva_cantidad: "Decimal",
+    ajustar_stock: bool,
+    usuario_id: str,
+) -> dict:
+    proyecto = obtener_proyecto(db, proyecto_id)
+
+    if proyecto.estado in ("finalizado", "cancelado"):
+        raise HTTPException(400, "No se puede modificar materiales en un proyecto finalizado o cancelado")
+
+    pm = (
+        db.query(ProyectoMaterial)
+        .filter(ProyectoMaterial.proyecto_id == proyecto_id, ProyectoMaterial.id_pm == id_pm)
+        .first()
+    )
+    if not pm:
+        raise HTTPException(404, "Entrada de material no encontrada")
+
+    material = None
+    if pm.material_id:
+        material = db.query(Material).filter(Material.id_material == pm.material_id).first()
+
+    diff = int(nueva_cantidad) - int(pm.cantidad_planeada)
+
+    if ajustar_stock and diff != 0 and material and not pm.externo and proyecto.estado == "en_curso":
+        if diff > 0:
+            if material.stock_actual < diff:
+                raise HTTPException(
+                    422,
+                    f"Stock insuficiente. Disponible: {material.stock_actual}, necesario: {diff}",
+                )
+            material.stock_actual -= diff
+            mov = (
+                db.query(Movimiento)
+                .filter(Movimiento.proyecto_id == proyecto_id, Movimiento.material_id == pm.material_id)
+                .first()
+            )
+            if mov:
+                mov.cantidad += diff
+            else:
+                db.add(Movimiento(
+                    id_movimiento=uuid.uuid4().hex,
+                    cantidad=diff,
+                    fecha_salida=datetime.utcnow(),
+                    proyecto_id=proyecto_id,
+                    material_id=pm.material_id,
+                    usuario_id=usuario_id,
+                ))
+        else:
+            devolver = abs(diff)
+            material.stock_actual += devolver
+            mov = (
+                db.query(Movimiento)
+                .filter(Movimiento.proyecto_id == proyecto_id, Movimiento.material_id == pm.material_id)
+                .first()
+            )
+            if mov:
+                if mov.cantidad <= devolver:
+                    db.delete(mov)
+                else:
+                    mov.cantidad -= devolver
+
+    pm.cantidad_planeada = nueva_cantidad
+    db.commit()
+    db.refresh(pm)
+    if material:
+        db.refresh(material)
+    return _material_dict(pm, material)
+
+
+def quitar_material_de_proyecto(
+    db: Session,
+    proyecto_id: str,
+    id_pm: str,
+    devolver_stock: bool,
+    usuario_id: str,
+) -> dict:
+    proyecto = obtener_proyecto(db, proyecto_id)
+
+    if proyecto.estado in ("finalizado", "cancelado"):
+        raise HTTPException(400, "No se pueden eliminar materiales de un proyecto finalizado o cancelado")
+
+    pm = (
+        db.query(ProyectoMaterial)
+        .filter(ProyectoMaterial.proyecto_id == proyecto_id, ProyectoMaterial.id_pm == id_pm)
+        .first()
+    )
+    if not pm:
+        raise HTTPException(404, "Entrada de material no encontrada")
+
+    # Devolver stock si corresponde (en_curso, no externo, con material del inventario)
+    if devolver_stock and not pm.externo and pm.material_id and proyecto.estado == "en_curso":
+        material = db.query(Material).filter(Material.id_material == pm.material_id).first()
+        if material:
+            movimientos = (
+                db.query(Movimiento)
+                .filter(Movimiento.proyecto_id == proyecto_id, Movimiento.material_id == pm.material_id)
+                .all()
+            )
+            total = sum(m.cantidad for m in movimientos)
+            if total > 0:
+                material.stock_actual += total
+            for mov in movimientos:
+                db.delete(mov)
+
+    db.delete(pm)
+    db.commit()
+    return {"mensaje": "Material eliminado del proyecto"}

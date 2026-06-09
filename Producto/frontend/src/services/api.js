@@ -247,6 +247,30 @@ export async function descargarPdfClienteProyecto(proyectoId) {
     );
 }
 
+// =============== MATERIALES DE UN PROYECTO (edición en vivo) ===============
+
+export async function agregarMaterialProyecto(proyectoId, payload) {
+    // payload: { material_id, cantidad, externo } | { nombre_externo, precio_externo, cantidad }
+    return fetchAPI(`/proyectos/${proyectoId}/materiales`, {
+        method: "POST",
+        body: JSON.stringify(payload),
+    });
+}
+
+export async function actualizarCantidadMaterial(proyectoId, idPm, cantidad, ajustarStock) {
+    return fetchAPI(`/proyectos/${proyectoId}/materiales/${idPm}`, {
+        method: "PUT",
+        body: JSON.stringify({ cantidad, ajustar_stock: ajustarStock }),
+    });
+}
+
+export async function quitarMaterialProyecto(proyectoId, idPm, devolverStock) {
+    return fetchAPI(
+        `/proyectos/${proyectoId}/materiales/${idPm}?devolver_stock=${devolverStock}`,
+        { method: "DELETE" }
+    );
+}
+
 // =============== VERIFICACIÓN DE CONTRASEÑA ===============
 
 export async function verificarPassword(password) {

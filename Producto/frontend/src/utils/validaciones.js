@@ -71,15 +71,22 @@ export function validarPrecio(valor, { etiqueta = "Precio" } = {}) {
 }
 
 // =============== TELÉFONO ===============
+// Acepta: +56 9 XXXX XXXX | +5691234 5678 | 569XXXXXXXX | 9XXXXXXXX
 export function validarTelefono(valor, { obligatorio = true } = {}) {
     const v = String(valor || "").trim();
     if (!v) {
         return obligatorio ? "El teléfono es obligatorio" : "";
     }
-    if (!REGEX_SOLO_DIGITOS.test(v)) return "El teléfono solo puede contener dígitos";
-    if (v.length < 8) return "El teléfono debe tener al menos 8 dígitos";
-    if (v.length > 15) return "El teléfono no puede superar 15 dígitos";
-    return "";
+    // Normalizar: quitar +, espacios, guiones, paréntesis
+    const normalizado = v.replace(/[\s+\-()]/g, "");
+    if (!/^\d+$/.test(normalizado)) {
+        return "El teléfono solo puede contener dígitos, +, espacios o guiones";
+    }
+    // Aceptar: 569XXXXXXXX (11 dígitos) o 9XXXXXXXX (9 dígitos)
+    if (/^569\d{8}$/.test(normalizado) || /^9\d{8}$/.test(normalizado)) {
+        return "";
+    }
+    return "Formato inválido. Use +56 9 XXXX XXXX o 9 XXXX XXXX";
 }
 
 // =============== SELECT ===============

@@ -318,12 +318,12 @@ def _tabla_materiales_empresa(materiales: list) -> Table:
     for m in materiales:
         precio_u = Decimal(str(m["precio_unitario"] or 0))
         cantidad = Decimal(str(m["cantidad_planeada"] or 0))
-        data.append([
-            m["nombre_material"] or "—",
-            str(int(cantidad)),
-            _fmt_precio(precio_u) or "—",
-            _fmt_precio(precio_u * cantidad) or "—",
-        ])
+        precio_txt = _fmt_precio(precio_u) if precio_u > 0 else "—"
+        subtotal_txt = _fmt_precio(precio_u * cantidad) if precio_u > 0 else "—"
+        nombre = m["nombre_material"] or "—"
+        if m.get("es_externo_nuevo"):
+            nombre += " ⬩"   # indicador visual en PDF de material externo nuevo
+        data.append([nombre, str(int(cantidad)), precio_txt, subtotal_txt])
 
     estilos = [
         ("BACKGROUND",    (0, 0), (-1, 0),  AZUL),

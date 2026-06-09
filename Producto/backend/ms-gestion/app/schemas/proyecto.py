@@ -1,8 +1,11 @@
-from pydantic import BaseModel, Field
+import re
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Optional, List
 from decimal import Decimal
 from datetime import date
 from app.schemas.plantilla import PlantillaOut
+
+_RE_TELEFONO_CL = re.compile(r'^(\+?56\s?)?9\s?\d{4}\s?\d{4}$|^569\d{8}$')
 
 
 class ProyectoCreate(BaseModel):
@@ -33,6 +36,61 @@ class ProyectoUpdate(BaseModel):
     fecha_termino_maximo: Optional[date] = None
     plantilla_id: Optional[str] = None
     observaciones: Optional[str] = None
+
+    @field_validator("nombre_proyecto")
+    @classmethod
+    def validar_nombre_proyecto(cls, v):
+        if v is not None:
+            v = v.strip()
+            if len(v) < 3 or len(v) > 50:
+                raise ValueError("El nombre del proyecto debe tener entre 3 y 50 caracteres")
+        return v
+
+    @field_validator("nombre_cliente")
+    @classmethod
+    def validar_nombre_cliente(cls, v):
+        if v is not None:
+            v = v.strip()
+            if len(v) < 3 or len(v) > 50:
+                raise ValueError("El nombre del cliente debe tener entre 3 y 50 caracteres")
+        return v
+
+    @field_validator("telefono_cliente")
+    @classmethod
+    def validar_telefono(cls, v):
+        if v is not None and v.strip():
+            normalizado = re.sub(r'[\s\+\-\(\)]', '', v.strip())
+            if not _RE_TELEFONO_CL.match(v.strip()) and not re.match(r'^569\d{8}$', normalizado) and not re.match(r'^9\d{8}$', normalizado):
+                raise ValueError("Formato de teléfono inválido. Use +56 9 XXXX XXXX o 9 XXXX XXXX")
+        return v
+
+    @field_validator("presupuesto_estimado", "presupuesto_final")
+    @classmethod
+    def no_negativo(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("El presupuesto no puede ser negativo")
+        return v
+
+    @field_validator("observaciones")
+    @classmethod
+    def validar_observaciones(cls, v):
+        if v is not None and len(v) > 500:
+            raise ValueError("Las observaciones no pueden superar 500 caracteres")
+        return v
+
+    @field_validator("direccion_cliente")
+    @classmethod
+    def validar_direccion(cls, v):
+        if v is not None and len(v) > 200:
+            raise ValueError("La dirección no puede superar 200 caracteres")
+        return v
+
+    @model_validator(mode="after")
+    def validar_fechas(self):
+        if self.fecha_inicio and self.fecha_termino_maximo:
+            if self.fecha_termino_maximo < self.fecha_inicio:
+                raise ValueError("La fecha de término debe ser posterior a la fecha de inicio")
+        return self
 
 
 class ProyectoOut(BaseModel):
