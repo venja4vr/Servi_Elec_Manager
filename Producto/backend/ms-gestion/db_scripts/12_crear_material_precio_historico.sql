@@ -1,4 +1,3 @@
---Nos saltamos el 11 por error---
 -- =====================================================================
 -- Servi Elec Manager - Migración 12
 -- Crea la tabla de histórico de precios Sodimac/manual por material.
