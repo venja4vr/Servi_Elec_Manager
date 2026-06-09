@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.db.database import get_db
@@ -10,6 +11,7 @@ from app.schemas.proyecto import (
     ProyectoCreateConMateriales,
 )
 from app.utils.auth import get_current_user, require_admin
+from app.services.pdf_service import generar_pdf_proyecto
 
 
 router = APIRouter(prefix="/proyectos", tags=["Proyectos"])
@@ -37,6 +39,22 @@ def obtener_materiales_planeados(
 ):
     """Devuelve los materiales que el proyecto planea/planeó usar, con info del inventario."""
     return proyecto_controller.get_materiales_planeados(db, proyecto_id)
+
+
+@router.get("/{proyecto_id}/pdf")
+def descargar_pdf(
+    proyecto_id: str,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """Genera y descarga el PDF del proyecto."""
+    pdf_bytes = generar_pdf_proyecto(proyecto_id, db)
+    filename = f"proyecto_{proyecto_id[:8].upper()}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/", response_model=ProyectoOut, status_code=201)

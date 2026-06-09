@@ -1,5 +1,6 @@
 // Configuración central de la API
-const API_URL = "http://98.95.225.248:8000";
+//const API_URL = "http://98.95.225.248:8000";
+const API_URL = "http://localhost:8000";
 
 // Función helper para hacer peticiones autenticadas
 export async function fetchAPI(endpoint, options = {}) {
@@ -209,6 +210,29 @@ export async function ajustarStockMaterial(materialId, cantidad) {
     return fetchAPI(`/materiales/${materialId}/stock?cantidad=${cantidad}`, {
         method: "PATCH",
     });
+}
+
+// =============== PDF DE PROYECTO ===============
+
+export async function descargarPdfProyecto(proyectoId) {
+    const token = localStorage.getItem("token");
+    const response = await fetch(`${API_URL}/proyectos/${proyectoId}/pdf`, {
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+    if (!response.ok) {
+        throw new Error(`Error al generar el PDF (${response.status})`);
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `proyecto_${proyectoId.substring(0, 8).toUpperCase()}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
 }
 
 // =============== VERIFICACIÓN DE CONTRASEÑA ===============

@@ -5,6 +5,7 @@ import {
     getProyecto,
     getMaterialesPlaneadosDeProyecto,
     actualizarProyecto,
+    descargarPdfProyecto,
 } from "../services/api";
 import {
     validarTexto,
@@ -21,6 +22,8 @@ function DetalleProyecto() {
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState("");
     const [mensajeOk, setMensajeOk] = useState("");
+
+    const [descargandoPdf, setDescargandoPdf] = useState(false);
 
     const [mostrarEditar, setMostrarEditar] = useState(false);
     const [datosEdicion, setDatosEdicion] = useState({});
@@ -114,6 +117,18 @@ function DetalleProyecto() {
             return "La fecha de término no puede ser anterior a la fecha de inicio";
         }
         return "";
+    };
+
+    const handleDescargarPdf = async () => {
+        setDescargandoPdf(true);
+        setError("");
+        try {
+            await descargarPdfProyecto(id);
+        } catch (err) {
+            setError(err.message || "Error al generar el PDF");
+        } finally {
+            setDescargandoPdf(false);
+        }
     };
 
     const abrirEditar = () => {
@@ -258,6 +273,13 @@ function DetalleProyecto() {
                                 Editar proyecto
                             </button>
                         )}
+                        <button
+                            className="btn btn-outline-primary btn-sm"
+                            onClick={handleDescargarPdf}
+                            disabled={descargandoPdf}
+                        >
+                            {descargandoPdf ? "Generando PDF..." : "Descargar PDF"}
+                        </button>
                         <button onClick={() => navigate("/proyectos")}>
                             Volver
                         </button>
