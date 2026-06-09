@@ -212,6 +212,37 @@ export async function ajustarStockMaterial(materialId, cantidad) {
     });
 }
 
+// =============== PRECIOS SODIMAC ===============
+
+export async function actualizarPrecioMaterial(materialId) {
+    return fetchAPI(`/materiales/${materialId}/actualizar-precio`, {
+        method: "POST",
+    });
+}
+
+export async function actualizarTodosLosPrecios() {
+    return fetchAPI("/materiales/actualizar-precios", {
+        method: "POST",
+    });
+}
+
+export async function guardarPrecioManual(materialId, precio) {
+    return fetchAPI(`/materiales/${materialId}/precio-manual`, {
+        method: "POST",
+        body: JSON.stringify({ precio }),
+    });
+}
+
+export async function getHistoricoPrecios(materialId, dias = 30) {
+    return fetchAPI(`/materiales/${materialId}/historico-precios?dias=${dias}`);
+}
+
+export async function actualizarPreciosPlantillas() {
+    return fetchAPI("/materiales/actualizar-precios-plantillas", {
+        method: "POST",
+    });
+}
+
 // =============== PDF DE PROYECTO ===============
 
 async function _descargarBlob(url, filename) {
