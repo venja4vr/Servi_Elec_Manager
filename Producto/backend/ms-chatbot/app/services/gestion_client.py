@@ -83,6 +83,34 @@ def obtener_plantillas() -> List[Dict[str, Any]]:
         return []
 
 
+def obtener_plantillas_por_categoria(categoria_nombre: str) -> Optional[List[Dict[str, Any]]]:
+    """Devuelve plantillas activas de una categoría. None si ms-gestion no responde."""
+    try:
+        from urllib.parse import quote
+        r = httpx.get(
+            _url(f"/plantillas/categoria/{quote(categoria_nombre)}"),
+            headers=_headers(),
+            timeout=5,
+        )
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        print(f"[GESTION] obtener_plantillas_por_categoria error: {e}")
+        return None
+
+
+def obtener_cotizacion_plantilla(plantilla_id: str) -> Optional[Dict[str, Any]]:
+    """Devuelve la cotizacion calculada (total con precios Sodimac) de una plantilla."""
+    try:
+        r = httpx.get(_url(f"/plantillas/{plantilla_id}/cotizacion"), headers=_headers(), timeout=5)
+        if r.status_code == 200:
+            return r.json()
+        return None
+    except Exception as e:
+        print(f"[GESTION] obtener_cotizacion_plantilla error: {e}")
+        return None
+
+
 def obtener_precio_plantilla(plantilla_id: str) -> Optional[float]:
     try:
         r = httpx.get(_url(f"/plantillas/{plantilla_id}"), headers=_headers(), timeout=5)

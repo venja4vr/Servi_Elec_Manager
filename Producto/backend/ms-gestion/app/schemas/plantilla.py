@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from decimal import Decimal
+from datetime import datetime
 
 
 CATEGORIAS_VALIDAS = [
@@ -47,6 +48,34 @@ class PlantillaOut(BaseModel):
     class Config:
         from_attributes = True
 
+
+# ── Cotización ────────────────────────────────────────────────────────────────
+
+class MaterialCotizacionOut(BaseModel):
+    nombre_material: str
+    cantidad: Decimal
+    unidad: str
+    precio_unitario: Optional[Decimal]
+    subtotal: Optional[Decimal]
+    sin_precio: bool
+
+    class Config:
+        from_attributes = True
+
+
+class CotizacionPlantillaOut(BaseModel):
+    plantilla_id: str
+    nombre_servicio: str
+    descripcion: Optional[str]
+    materiales: List[MaterialCotizacionOut]
+    total_estimado: Decimal
+    materiales_sin_precio: List[str]  # nombres de los materiales sin precio
+
+    class Config:
+        from_attributes = True
+
+
+# ── Materiales vinculados (endpoint /materiales) ──────────────────────────────
 
 # Schema para devolver un material vinculado a una plantilla
 class MaterialVinculadoOut(BaseModel):

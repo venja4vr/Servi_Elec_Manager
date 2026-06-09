@@ -1,3 +1,4 @@
+from decimal import Decimal
 from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException
 from app.models.plantilla import Plantilla
@@ -83,6 +84,49 @@ def eliminar_plantilla(db: Session, plantilla_id: str):
     db.delete(p)
     db.commit()
     return {"mensaje": "Plantilla eliminada"}
+
+
+def calcular_cotizacion_plantilla(db: Session, plantilla_id: str) -> dict:
+    p = obtener_plantilla(db, plantilla_id)
+
+    vinculaciones = (
+        db.query(PlantillaMaterial, Material)
+        .join(Material, PlantillaMaterial.material_id == Material.id_material)
+        .filter(PlantillaMaterial.plantilla_id == plantilla_id)
+        .all()
+    )
+
+    materiales = []
+    total_estimado = Decimal("0")
+    nombres_sin_precio = []
+
+    for pm, mat in vinculaciones:
+        precio = mat.precio_sodimac_actual
+        sin_precio = precio is None
+        subtotal = None
+        if not sin_precio:
+            subtotal = Decimal(str(pm.cantidad_sugerida)) * Decimal(str(precio))
+            total_estimado += subtotal
+        else:
+            nombres_sin_precio.append(mat.nombre_material)
+
+        materiales.append({
+            "nombre_material": mat.nombre_material,
+            "cantidad": pm.cantidad_sugerida,
+            "unidad": pm.unidad,
+            "precio_unitario": precio,
+            "subtotal": subtotal,
+            "sin_precio": sin_precio,
+        })
+
+    return {
+        "plantilla_id": p.id_plantilla,
+        "nombre_servicio": p.nombre_servicio,
+        "descripcion": p.descripcion,
+        "materiales": materiales,
+        "total_estimado": total_estimado,
+        "materiales_sin_precio": nombres_sin_precio,
+    }
 
 
 def obtener_materiales_de_plantilla(db: Session, plantilla_id: str):

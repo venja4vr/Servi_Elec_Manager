@@ -8,6 +8,7 @@ from app.schemas.plantilla import (
     PlantillaUpdate,
     PlantillaOut,
     PlantillaConMaterialesOut,
+    CotizacionPlantillaOut,
 )
 from app.utils.auth import get_current_user, require_admin
 
@@ -45,6 +46,16 @@ def obtener_materiales(
 ):
     """Devuelve los materiales vinculados a la plantilla con datos de inventario."""
     return plantilla_controller.get_materiales(db, plantilla_id)
+
+
+@router.get("/{plantilla_id}/cotizacion", response_model=CotizacionPlantillaOut)
+def obtener_cotizacion(
+    plantilla_id: str,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """Calcula el total estimado de la plantilla usando precios Sodimac actuales."""
+    return plantilla_controller.get_cotizacion(db, plantilla_id)
 
 
 @router.post("/", response_model=PlantillaOut, status_code=201)

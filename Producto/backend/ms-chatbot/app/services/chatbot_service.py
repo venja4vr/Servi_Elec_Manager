@@ -56,37 +56,8 @@ def _menu_categorias() -> str:
 
 
 def _menu_servicios(plantillas: list, categoria: str) -> Tuple[str, dict]:
-    # Filtra las plantillas de ms-gestion según la categoría elegida
-    # Usa palabras clave para filtrar:
-    # "Instalaciones" → busca "instalac", "tablero", "tomacorriente"...
-    # Retorna el texto del menú Y un mapa {numero: plantilla}
-    # El mapa se guarda en la sesión para saber qué eligió el cliente
-    palabras_clave = {
-        "Instalaciones Eléctricas": [
-            "instalac", "tablero", "tomacorriente",
-            "generador", "interruptor", "cambio de"
-        ],
-        "Mantenciones Eléctricas": [
-            "mantenc", "reparac", "diagnos",
-            "cortocircuito", "revision", "inspecc"
-        ],
-        "Servicios Industriales": [
-            "industrial", "maquinaria", "trifasico",
-            "trifásico", "configurac", "sistema energ"
-        ],
-    }
-
-    claves = palabras_clave.get(categoria, [])
-    filtradas = [
-        p for p in plantillas
-        if any(c in p.get("nombre_servicio", "").lower() for c in claves)
-        or "contacto" in p.get("nombre_servicio", "").lower()
-    ]
-
-    if not filtradas:
-        filtradas = plantillas
-
-    mapa = {str(i + 1): p for i, p in enumerate(filtradas)}
+    # plantillas ya viene filtrada por categoría y activa=True desde ms-gestion
+    mapa = {str(i + 1): p for i, p in enumerate(plantillas)}
 
     lineas = [f"🔧 *Servicios — {categoria}:*\n"]
     for num, p in mapa.items():
@@ -96,23 +67,39 @@ def _menu_servicios(plantillas: list, categoria: str) -> Tuple[str, dict]:
     return "\n".join(lineas), mapa
 
 
-def _texto_cotizacion(nombre_servicio: str, precio: float) -> str:
-     # Muestra el precio formateado: $195.000
-    precio_fmt = f"${precio:,.0f}".replace(",", ".")
-    return (
+def _texto_cotizacion(nombre_servicio: str, cotizacion: dict) -> str:
+    total = cotizacion.get("total_estimado", 0) or 0
+    sin_precio = cotizacion.get("materiales_sin_precio", [])
+    materiales = cotizacion.get("materiales", [])
+
+    # Sin materiales → evaluación personalizada
+    if not materiales:
+        return _texto_sin_precio(nombre_servicio)
+
+    # Todos sin precio → evaluación personalizada
+    if float(total) == 0 and sin_precio:
+        return _texto_sin_precio(nombre_servicio)
+
+    precio_fmt = f"${float(total):,.0f}".replace(",", ".")
+    texto = (
         f"📋 *{nombre_servicio}*\n\n"
         f"💰 Valor aproximado: *{precio_fmt}*\n\n"
         "_Precio referencial basado en materiales actuales._\n\n"
-        "Si desea continuar escribe *OK*.\n"
-        "Para volver al menú escribe *menú*."
     )
+    if sin_precio:
+        nombres = ", ".join(sin_precio)
+        texto += (
+            f"⚠️ Algunos materiales no tienen precio actualizado: {nombres}.\n"
+            "Un administrador te dará la cotización completa al revisar tu solicitud.\n\n"
+        )
+    texto += "Si desea continuar escribe *OK*.\nPara volver al menú escribe *menú*."
+    return texto
 
 
 def _texto_sin_precio(nombre_servicio: str) -> str:
-    # Cuando no hay precio: "requiere evaluación personalizada"
     return (
         f"📋 *{nombre_servicio}*\n\n"
-        "Este servicio requiere una evaluación personalizada.\n\n"
+        "Este servicio requiere evaluación personalizada.\n\n"
         "Si desea que un administrador lo contacte escribe *OK*.\n"
         "Para volver al menú escribe *menú*."
     )
@@ -174,43 +161,55 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
 
     # ── Selección de categoría ───────────────────────────────
     if estado == EstadoChat.ESPERANDO_CATEGORIA:
-        cat = CATEGORIAS.get(texto_limpio) # "1" → "Instalaciones Eléctricas"
+        cat = CATEGORIAS.get(texto_limpio)
         if not cat:
             return f"Por favor escribe 1, 2 o 3.\n\n{_menu_categorias()}"
 
-         # Traer plantillas de ms-gestion (llamada HTTP real)
-        plantillas = gestion_client.obtener_plantillas()
-        if not plantillas:
+        # Traer plantillas activas de la categoría desde ms-gestion
+        plantillas = gestion_client.obtener_plantillas_por_categoria(cat)
+        if plantillas is None:
+            # Error de conexión con ms-gestion
             return (
                 "⚠️ No pudimos conectar con el sistema en este momento.\n"
                 "Por favor intenta más tarde o escribe *menú*."
             )
+        if len(plantillas) == 0:
+            return (
+                f"Actualmente no hay servicios disponibles en {cat}.\n"
+                "Contáctanos directamente para una cotización personalizada.\n\n"
+                "_Escribe *menú* para volver._"
+            )
 
         texto_menu, mapa = _menu_servicios(plantillas, cat)
         sesion.categoria_elegida = cat
-        sesion.mapa_servicios = mapa # Guardar el mapa para el siguiente paso
+        sesion.mapa_servicios = mapa
         sesion.estado = EstadoChat.ESPERANDO_SERVICIO
         sesion_service.guardar_sesion(sesion)
         return texto_menu
 
     # ── Selección de servicio ────────────────────────────────
     if estado == EstadoChat.ESPERANDO_SERVICIO:
-        # Buscar en el mapa guardado: el cliente escribió "1" → buscar clave "1"
         plantilla = sesion.mapa_servicios.get(texto_limpio)
         if not plantilla:
             return "Por favor escribe el número del servicio que deseas."
 
         sesion.plantilla_id    = plantilla["id_plantilla"]
         sesion.nombre_servicio = plantilla["nombre_servicio"]
-        # Intentar obtener el precio de ms-gestion
-        precio = gestion_client.obtener_precio_plantilla(sesion.plantilla_id)
-        sesion.precio_estimado = precio
+
+        # Obtener cotizacion calculada con precios Sodimac actuales
+        cotizacion = gestion_client.obtener_cotizacion_plantilla(sesion.plantilla_id)
+        if cotizacion is None:
+            # ms-gestion caído: mostrar sin precio pero continuar el flujo
+            sesion.precio_estimado = None
+            sesion.estado = EstadoChat.COTIZACION_ENVIADA
+            sesion_service.guardar_sesion(sesion)
+            return _texto_sin_precio(sesion.nombre_servicio)
+
+        total = cotizacion.get("total_estimado", 0) or 0
+        sesion.precio_estimado = float(total) if float(total) > 0 else None
         sesion.estado = EstadoChat.COTIZACION_ENVIADA
         sesion_service.guardar_sesion(sesion)
-
-        if precio:
-            return _texto_cotizacion(sesion.nombre_servicio, precio)
-        return _texto_sin_precio(sesion.nombre_servicio)
+        return _texto_cotizacion(sesion.nombre_servicio, cotizacion)
 
     # ── Cliente confirma con OK ──────────────────────────────
     if estado == EstadoChat.COTIZACION_ENVIADA:

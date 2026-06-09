@@ -25,3 +25,7 @@ def delete(db: Session, plantilla_id: str):
 
 def get_materiales(db: Session, plantilla_id: str):
     return plantilla_service.obtener_materiales_de_plantilla(db, plantilla_id)
+
+
+def get_cotizacion(db: Session, plantilla_id: str):
+    return plantilla_service.calcular_cotizacion_plantilla(db, plantilla_id)
