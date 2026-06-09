@@ -279,7 +279,7 @@ function RecursosPendientes() {
                             navigate("/buscador")
                         }
                     >
-                        Buscador
+                        Comparador
                     </button>
                 </div>
 
@@ -307,7 +307,7 @@ function RecursosPendientes() {
 
                                 <p>
                                     Agrega productos desde el
-                                    buscador.
+                                    comparador.
                                 </p>
                             </div>
 

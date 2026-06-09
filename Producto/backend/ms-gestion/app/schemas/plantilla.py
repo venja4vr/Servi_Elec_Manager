@@ -3,18 +3,35 @@ from typing import Optional, List
 from decimal import Decimal
 
 
+CATEGORIAS_VALIDAS = [
+    "Instalaciones Eléctricas",
+    "Mantenciones Eléctricas",
+    "Servicios Industriales",
+]
+
+
+class MaterialPlantillaIn(BaseModel):
+    material_id: str
+    cantidad_sugerida: Decimal = Field(..., gt=0)
+    unidad: str = "unidad"
+
+
 class PlantillaCreate(BaseModel):
-    nombre_servicio: str
-    descripcion: Optional[str] = None
-    materiales_sugeridos: Optional[str] = None
+    nombre_servicio: str = Field(..., min_length=3, max_length=60)
+    descripcion: Optional[str] = Field(default=None, max_length=200)
+    categoria: Optional[str] = None
+    activa: bool = True
     precio_estimado: Optional[Decimal] = Field(default=None, ge=0)
+    materiales: List[MaterialPlantillaIn] = []
 
 
 class PlantillaUpdate(BaseModel):
-    nombre_servicio: Optional[str] = None
-    descripcion: Optional[str] = None
-    materiales_sugeridos: Optional[str] = None
+    nombre_servicio: Optional[str] = Field(default=None, min_length=3, max_length=60)
+    descripcion: Optional[str] = Field(default=None, max_length=200)
+    categoria: Optional[str] = None
+    activa: Optional[bool] = None
     precio_estimado: Optional[Decimal] = Field(default=None, ge=0)
+    materiales: Optional[List[MaterialPlantillaIn]] = None
 
 
 class PlantillaOut(BaseModel):
@@ -23,6 +40,9 @@ class PlantillaOut(BaseModel):
     descripcion: Optional[str]
     materiales_sugeridos: Optional[str]
     precio_estimado: Optional[Decimal]
+    categoria: Optional[str]
+    activa: bool = True
+    num_materiales: int = 0
 
     class Config:
         from_attributes = True

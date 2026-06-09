@@ -157,6 +157,26 @@ export async function getPlantilla(id) {
     return fetchAPI(`/plantillas/${id}`);
 }
 
+export async function crearPlantilla(data) {
+    return fetchAPI("/plantillas/", {
+        method: "POST",
+        body: JSON.stringify(data),
+    });
+}
+
+export async function actualizarPlantilla(id, data) {
+    return fetchAPI(`/plantillas/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+    });
+}
+
+export async function eliminarPlantilla(id) {
+    return fetchAPI(`/plantillas/${id}`, {
+        method: "DELETE",
+    });
+}
+
 export async function getMovimientos() {
     return fetchAPI("/movimientos/");
 }

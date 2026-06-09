@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, Numeric
+from sqlalchemy import Column, String, Text, Numeric, Boolean
 from app.db.database import Base
 import uuid
 
@@ -11,3 +11,14 @@ class Plantilla(Base):
     descripcion          = Column(String(200), nullable=True)
     materiales_sugeridos = Column(Text, nullable=True)
     precio_estimado      = Column(Numeric(9, 2), nullable=True)
+    categoria            = Column(String(40), nullable=True)
+    activa               = Column(Boolean, nullable=False, default=True, server_default="true")
+
+    @property
+    def num_materiales(self) -> int:
+        if "materiales_vinculados" in self.__dict__:
+            return len(self.__dict__["materiales_vinculados"])
+        try:
+            return len(self.materiales_vinculados)
+        except Exception:
+            return 0
