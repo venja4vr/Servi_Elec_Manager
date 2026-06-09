@@ -3,3 +3,7 @@
 **/.pytest_cache/
 .env
 .vscode/
+# Archivos de BD locales
+*.db
+*.db-journal
+
