@@ -6,6 +6,7 @@ import {
     getMaterialesPlaneadosDeProyecto,
     actualizarProyecto,
     descargarPdfProyecto,
+    descargarPdfClienteProyecto,
 } from "../services/api";
 import {
     validarTexto,
@@ -24,6 +25,7 @@ function DetalleProyecto() {
     const [mensajeOk, setMensajeOk] = useState("");
 
     const [descargandoPdf, setDescargandoPdf] = useState(false);
+    const [descargandoPdfCliente, setDescargandoPdfCliente] = useState(false);
 
     const [mostrarEditar, setMostrarEditar] = useState(false);
     const [datosEdicion, setDatosEdicion] = useState({});
@@ -128,6 +130,18 @@ function DetalleProyecto() {
             setError(err.message || "Error al generar el PDF");
         } finally {
             setDescargandoPdf(false);
+        }
+    };
+
+    const handleDescargarPdfCliente = async () => {
+        setDescargandoPdfCliente(true);
+        setError("");
+        try {
+            await descargarPdfClienteProyecto(id);
+        } catch (err) {
+            setError(err.message || "Error al generar el PDF cliente");
+        } finally {
+            setDescargandoPdfCliente(false);
         }
     };
 
@@ -274,11 +288,18 @@ function DetalleProyecto() {
                             </button>
                         )}
                         <button
-                            className="btn btn-outline-primary btn-sm"
+                            className="btn btn-primary btn-sm"
                             onClick={handleDescargarPdf}
                             disabled={descargandoPdf}
                         >
-                            {descargandoPdf ? "Generando PDF..." : "Descargar PDF"}
+                            {descargandoPdf ? "Generando..." : "PDF Empresa"}
+                        </button>
+                        <button
+                            className="btn btn-outline-secondary btn-sm"
+                            onClick={handleDescargarPdfCliente}
+                            disabled={descargandoPdfCliente}
+                        >
+                            {descargandoPdfCliente ? "Generando..." : "PDF Cliente"}
                         </button>
                         <button onClick={() => navigate("/proyectos")}>
                             Volver
@@ -516,14 +537,18 @@ function DetalleProyecto() {
                                         </div>
                                         <div className="col-md-6">
                                             <label className="form-label">Tipo de proyecto</label>
-                                            <input
-                                                type="text"
-                                                className={`form-control ${errEdTipoProyecto ? "is-invalid" : ""}`}
+                                            <select
+                                                className={`form-select ${errEdTipoProyecto ? "is-invalid" : ""}`}
                                                 value={datosEdicion.tipo_proyecto}
                                                 onChange={(e) => handleCambioCampo("tipo_proyecto", e.target.value)}
                                                 onBlur={() => setErrEdTipoProyecto(vEdTipoProyecto(datosEdicion.tipo_proyecto))}
-                                                maxLength={25}
-                                            />
+                                            >
+                                                <option value="">Sin especificar</option>
+                                                <option value="Residencial">Residencial</option>
+                                                <option value="Comercial">Comercial</option>
+                                                <option value="Industrial">Industrial</option>
+                                                <option value="Chatbot">Chatbot (WhatsApp)</option>
+                                            </select>
                                             {errEdTipoProyecto && (
                                                 <div className="invalid-feedback">{errEdTipoProyecto}</div>
                                             )}
@@ -598,13 +623,15 @@ function DetalleProyecto() {
                                                 maxLength={500}
                                                 placeholder="Notas adicionales sobre el proyecto"
                                             ></textarea>
-                                            {errEdObservaciones ? (
-                                                <div className="invalid-feedback">{errEdObservaciones}</div>
-                                            ) : (
-                                                <small className="text-muted">
-                                                    Máximo 500 caracteres
+                                            <div className="d-flex justify-content-between align-items-start mt-1">
+                                                {errEdObservaciones
+                                                    ? <div className="text-danger small">{errEdObservaciones}</div>
+                                                    : <span />
+                                                }
+                                                <small className={`text-${(datosEdicion.observaciones || "").length >= 450 ? "warning" : "muted"}`}>
+                                                    {(datosEdicion.observaciones || "").length}/500
                                                 </small>
-                                            )}
+                                            </div>
                                         </div>
                                     </div>
 

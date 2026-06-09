@@ -214,25 +214,37 @@ export async function ajustarStockMaterial(materialId, cantidad) {
 
 // =============== PDF DE PROYECTO ===============
 
-export async function descargarPdfProyecto(proyectoId) {
+async function _descargarBlob(url, filename) {
     const token = localStorage.getItem("token");
-    const response = await fetch(`${API_URL}/proyectos/${proyectoId}/pdf`, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
+    const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
     });
     if (!response.ok) {
         throw new Error(`Error al generar el PDF (${response.status})`);
     }
     const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
+    const objectUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = `proyecto_${proyectoId.substring(0, 8).toUpperCase()}.pdf`;
+    a.href = objectUrl;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
-    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(objectUrl);
+}
+
+export async function descargarPdfProyecto(proyectoId) {
+    await _descargarBlob(
+        `${API_URL}/proyectos/${proyectoId}/pdf`,
+        `proyecto_${proyectoId.substring(0, 8).toUpperCase()}.pdf`
+    );
+}
+
+export async function descargarPdfClienteProyecto(proyectoId) {
+    await _descargarBlob(
+        `${API_URL}/proyectos/${proyectoId}/pdf-cliente`,
+        `proyecto_cliente_${proyectoId.substring(0, 8).toUpperCase()}.pdf`
+    );
 }
 
 // =============== VERIFICACIÓN DE CONTRASEÑA ===============

@@ -11,7 +11,7 @@ from app.schemas.proyecto import (
     ProyectoCreateConMateriales,
 )
 from app.utils.auth import get_current_user, require_admin
-from app.services.pdf_service import generar_pdf_proyecto
+from app.services.pdf_service import generar_pdf_proyecto, generar_pdf_cliente
 
 
 router = APIRouter(prefix="/proyectos", tags=["Proyectos"])
@@ -42,14 +42,30 @@ def obtener_materiales_planeados(
 
 
 @router.get("/{proyecto_id}/pdf")
-def descargar_pdf(
+def descargar_pdf_empresa(
     proyecto_id: str,
     db: Session = Depends(get_db),
     _=Depends(get_current_user),
 ):
-    """Genera y descarga el PDF del proyecto."""
+    """PDF interno (empresa) con todos los campos, costos y margen."""
     pdf_bytes = generar_pdf_proyecto(proyecto_id, db)
     filename = f"proyecto_{proyecto_id[:8].upper()}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/{proyecto_id}/pdf-cliente")
+def descargar_pdf_cliente(
+    proyecto_id: str,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """PDF externo (cliente) sin precios unitarios ni margen."""
+    pdf_bytes = generar_pdf_cliente(proyecto_id, db)
+    filename = f"proyecto_cliente_{proyecto_id[:8].upper()}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
