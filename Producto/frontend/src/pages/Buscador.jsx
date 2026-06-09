@@ -222,8 +222,35 @@ function Buscador() {
                                 key={`${producto.codigo}-${producto.tienda}`}
                             >
                                 {/* IMAGEN */}
-                                <div className="resource-image">
-                                    Imagen
+                                <div
+                                    className="resource-image"
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        minHeight: "100px",
+                                    }}
+                                >
+                                    {producto.imagen ? (
+                                        <img
+                                            src={producto.imagen}
+                                            alt={producto.nombre}
+                                            style={{
+                                                maxWidth: "100px",
+                                                maxHeight: "100px",
+                                                objectFit: "contain",
+                                                borderRadius: "4px",
+                                            }}
+                                            onError={(e) => {
+                                                e.target.style.display = "none";
+                                                e.target.parentElement.innerHTML = '<span style="color: #999; font-size: 12px;">Sin imagen</span>';
+                                            }}
+                                        />
+                                    ) : (
+                                        <span style={{ color: "#999", fontSize: "12px" }}>
+                                            Sin imagen
+                                        </span>
+                                    )}
                                 </div>
 
                                 {/* INFO */}
