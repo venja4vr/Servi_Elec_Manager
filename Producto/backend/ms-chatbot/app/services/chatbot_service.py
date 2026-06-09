@@ -14,6 +14,8 @@ CATEGORIAS = {
 # Palabras que reinician la conversación desde cualquier estado
 PALABRAS_REINICIO = {"hola", "menu", "menú", "inicio", "restart", "volver", "empezar"}
 
+PALABRAS_VOLVER = {"volver", "atras", "atrás", "corregir", "error", "equivoque", "equivoqué"}
+
 
 # Las 38 comunas de la Quinta Región válidas
 COMUNAS_QUINTA_REGION = {
@@ -59,13 +61,13 @@ def _menu_principal() -> str:
 
 
 def _menu_categorias() -> str:
-    # Las 3 categorías de servicio
     return (
         "📂 *Seleccione una categoría:*\n\n"
         "1️⃣  Instalaciones Eléctricas\n"
         "2️⃣  Mantenciones Eléctricas\n"
         "3️⃣  Servicios Industriales\n\n"
-        "_Escribe el número de tu elección_"
+        "_Escribe el número de tu elección_\n"
+        "_Escribe *menú* para volver al inicio_"
     )
 
 
@@ -106,6 +108,7 @@ def _menu_servicios(plantillas: list, categoria: str) -> Tuple[str, dict]:
     for num, p in mapa.items():
         lineas.append(f"{num}️⃣  {p['nombre_servicio']}")
     lineas.append("\n_Escribe el número de tu elección_")
+    lineas.append("_Escribe *menú* para volver al inicio_")
 
     return "\n".join(lineas), mapa
 
@@ -237,8 +240,28 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
         _, pregunta = PREGUNTAS_FICHA[0] # Primera pregunta: nombre
         return f"¡Perfecto! Necesito algunos datos.\n\n{pregunta}"
 
-# ── Recopilación de datos de la ficha ────────────────────
+    # ── Recopilación de datos de la ficha ────────────────────
     if estado == EstadoChat.RECOPILANDO_DATOS:
+
+        # Comando para retroceder una pregunta
+        if texto_limpio in PALABRAS_VOLVER:
+            if sesion.paso_recopilacion == 0:
+                # Ya está en la primera pregunta
+                return (
+                    "Ya estás en la primera pregunta.\n\n"
+                    "Si deseas cancelar y volver al menú escribe *menú*.\n\n"
+                    "De lo contrario responde: ¿Cuál es tu nombre completo?"
+                )
+            # Retroceder una pregunta y borrar la respuesta anterior
+            sesion.paso_recopilacion -= 1
+            campo_anterior, pregunta_anterior = PREGUNTAS_FICHA[sesion.paso_recopilacion]
+            setattr(sesion, campo_anterior, None)  # Borrar respuesta anterior
+            sesion_service.guardar_sesion(sesion)
+            return (
+                f"De acuerdo, volvamos atrás.\n\n"
+                f"{pregunta_anterior}"
+            )
+
         campo, _ = PREGUNTAS_FICHA[sesion.paso_recopilacion]
 
         # Validación especial para la comuna
@@ -249,9 +272,9 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
                     "⚠️ Esa comuna no pertenece a la Quinta Región.\n\n"
                     "Por favor escribe una comuna válida, por ejemplo:\n"
                     "Valparaíso, Viña del Mar, Quilpué, Villa Alemana, "
-                    "San Antonio, Quillota, Los Andes, San Felipe..."
+                    "San Antonio, Quillota, Los Andes, San Felipe...\n\n"
+                    "_Escribe *volver* para corregir la dirección_"
                 )
-            # Guardar con la primera letra en mayúscula
             setattr(sesion, campo, texto.strip().title())
         else:
             setattr(sesion, campo, texto)
@@ -261,7 +284,7 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
         if sesion.paso_recopilacion < len(PREGUNTAS_FICHA):
             _, siguiente = PREGUNTAS_FICHA[sesion.paso_recopilacion]
             sesion_service.guardar_sesion(sesion)
-            return siguiente
+            return f"{siguiente}\n\n_Escribe *volver* para corregir la respuesta anterior_"
 
         sesion_service.guardar_sesion(sesion)
         return _crear_proyecto(sesion)
