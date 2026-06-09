@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
+import GuiaRapida from "../components/GuiaRapida";
 
 const Proyectos = () => {
   const [tabActivo, setTabActivo] = useState("pendientes");
@@ -13,9 +14,27 @@ const Proyectos = () => {
       <div className="projects-page">
         <div className="projects-header">
           <div>
-            <h1>Proyectos</h1>
-            <p>Administra proyectos eléctricos y revisa su estado actual.</p>
+              <h1>Proyectos</h1>
+            <p>
+              Administra proyectos eléctricos y revisa su estado actual.
+            </p>
           </div>
+
+
+        <div className="projects-header-actions">
+          <GuiaRapida
+              titulo="Guía rápida de Proyectos"
+              descripcion="Aquí puedes revisar el estado de los proyectos, consultar información detallada, realizar seguimiento de avances y administrar las actividades asociadas."
+            />
+
+            <button
+              className="primary-btn"
+              onClick={() => navigate("/proyectos/nuevo")}
+            >
+              + Nuevo proyecto
+            </button>
+        </div>
+
         </div>
 
         <div className="projects-tabs">

@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
+import GuiaRapida from "../components/GuiaRapida";
 
 function AgregarProducto() {
   const navigate = useNavigate();
@@ -14,13 +15,20 @@ function AgregarProducto() {
       <div className="add-resource-page">
         <div className="add-resource-header">
           <div>
-            <h1>Agregar recurso</h1>
+            <h1>Agregar Producto</h1>
             <p>Registro manual de un nuevo producto para el inventario.</p>
           </div>
+
+          <div className="header-actions">
+          <GuiaRapida
+            titulo="Guía rápida de Agregar Recurso"
+            descripcion="Completa el formulario para registrar un nuevo recurso en el inventario. Ingresa la información del producto, stock disponible, categoría y datos necesarios para mantener actualizado el control de materiales."
+          />
 
           <button onClick={() => navigate("/inventario")}>
             Volver
           </button>
+          </div>
         </div>
 
         <form className="add-resource-card" onSubmit={handleSubmit}>

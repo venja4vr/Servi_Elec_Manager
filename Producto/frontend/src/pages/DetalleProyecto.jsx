@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
+import GuiaRapida from "../components/GuiaRapida";
 
 function DetalleProyecto() {
   const navigate = useNavigate();
@@ -13,10 +14,17 @@ function DetalleProyecto() {
             <p>Proyecto #010 — Finalizado</p>
           </div>
 
+          <div className="header-actions">
+            <GuiaRapida
+              titulo="Guía rápida de Detalle de Proyecto"
+              descripcion="Visualiza toda la información relacionada con el proyecto seleccionado, incluyendo cliente, recursos utilizados, estado de avance, costos asociados y acciones disponibles."
+            />
+
           <button onClick={() => navigate("/proyectos")}>
             Volver
           </button>
         </div>
+      </div>
 
         <div className="detail-grid">
           <div className="detail-card">

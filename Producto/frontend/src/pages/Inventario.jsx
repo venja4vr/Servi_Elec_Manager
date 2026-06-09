@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
+import GuiaRapida from "../components/GuiaRapida";
 
 function Inventario() {
   const navigate = useNavigate();
@@ -27,9 +28,17 @@ function Inventario() {
             <p>Gestión de recursos disponibles para los servicios eléctricos.</p>
           </div>
 
+          <div className="header-actions">
+          <GuiaRapida
+              titulo="Guía rápida de Inventario"
+              descripcion="Gestiona los recursos y materiales registrados en el sistema. Aquí puedes consultar existencias, buscar productos, editar información y controlar el stock disponible para los proyectos."
+            />
+
           <button onClick={() => navigate("/agregar-producto")}>
             Agregar recurso
           </button>
+
+          </div>
         </div>
 
         <div className="inventory-search">

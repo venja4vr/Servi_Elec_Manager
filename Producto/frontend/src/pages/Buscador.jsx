@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
+import GuiaRapida from "../components/GuiaRapida";
 
 function Buscador() {
   const navigate = useNavigate();
@@ -17,6 +18,10 @@ function Buscador() {
             <h1>Buscador</h1>
             <p>Consulta recursos disponibles para los servicios eléctricos.</p>
           </div>
+          <GuiaRapida
+              titulo="Guía rápida del Buscador"
+              descripcion="Utiliza esta herramienta para encontrar rápidamente materiales disponibles para algún servicio o proyecto."
+            />
         </div>
 
         <div className="search-actions">

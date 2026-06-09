@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
+import GuiaRapida from "../components/GuiaRapida";
 
 function RecursosPendientes() {
   const navigate = useNavigate();
@@ -16,6 +17,11 @@ function RecursosPendientes() {
             <h1>Recursos pendientes</h1>
             <p>Revisa recursos pendientes de asignación o confirmación.</p>
           </div>
+
+          <GuiaRapida
+              titulo="Guía rápida de Recursos Pendientes"
+              descripcion="Aquí puedes revisar el estado de los productos, consultar información detallada, realizar seguimiento de estado y administrar las actividades asociadas."
+            />
         </div>
 
         <div className="search-actions">

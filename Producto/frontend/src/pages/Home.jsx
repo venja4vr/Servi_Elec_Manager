@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
+import GuiaRapida from "../components/GuiaRapida";
 
 function Home() {
   const navigate = useNavigate();
@@ -14,6 +15,10 @@ function Home() {
         </div>
 
         <div className="header-actions">
+            <GuiaRapida
+              titulo="Guía rápida del Home"
+              descripcion="Aquí encontrarás un resumen general del sistema, incluyendo estadísticas, proyectos recientes y notificaciones importantes de la empresa."
+            />
 
           <div className="user-box">
             <div className="user-avatar">JP</div>
@@ -186,7 +191,6 @@ function Home() {
         <div className="dashboard-card notifications-card">
           <div className="card-title-row">
             <h2>Notificaciones</h2>
-            <button>Ver todas</button>
           </div>
 
           <div className="notification-item danger">
