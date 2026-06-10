@@ -12,7 +12,13 @@ CATEGORIAS = {
 
 
 # Palabras que reinician la conversación desde cualquier estado
-PALABRAS_REINICIO = {"hola", "menu", "menú", "inicio", "restart", "volver", "empezar"}
+PALABRAS_REINICIO = {"menu", "menú", "inicio", "cancelar", "salir"}
+
+# Palabras para retroceder una pregunta (solo en RECOPILANDO_DATOS)
+PALABRAS_VOLVER = {
+    "volver", "atras", "atrás", "anterior", "regresar",
+    "corregir", "error", "equivoque", "equivoqué", "me equivoque",
+}
 
 
 # Las 38 comunas de la Quinta Región válidas
@@ -59,13 +65,13 @@ def _menu_principal() -> str:
 
 
 def _menu_categorias() -> str:
-    # Las 3 categorías de servicio
     return (
         "📂 *Seleccione una categoría:*\n\n"
         "1️⃣  Instalaciones Eléctricas\n"
         "2️⃣  Mantenciones Eléctricas\n"
         "3️⃣  Servicios Industriales\n\n"
-        "_Escribe el número de tu elección_"
+        "_Escribe el número de tu elección_\n"
+        "_Escribe *menú* para volver al inicio_"
     )
 
 
@@ -77,6 +83,7 @@ def _menu_servicios(plantillas: list, categoria: str) -> Tuple[str, dict]:
     for num, p in mapa.items():
         lineas.append(f"{num}️⃣  {p['nombre_servicio']}")
     lineas.append("\n_Escribe el número de tu elección_")
+    lineas.append("_Escribe *menú* para volver al inicio_")
 
     return "\n".join(lineas), mapa
 
@@ -137,11 +144,48 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
     sesion = sesion_service.obtener_sesion(telefono) # Recuperar memoria del cliente
     estado = sesion.estado # ¿En qué paso está?
 
-    # Reinicio en cualquier momento o primer mensaje
-    # Si escribe "hola", "menú", etc. → volver al inicio sin importar el estado
-    if texto_limpio in PALABRAS_REINICIO or estado == EstadoChat.INICIO:
-        sesion = sesion_service.reiniciar_sesion(telefono)
+    # "hola" tiene comportamiento contextual según el estado de la conversación
+    if texto_limpio == "hola":
+        if estado == EstadoChat.RECOPILANDO_DATOS:
+            _, pregunta_actual = PREGUNTAS_FICHA[sesion.paso_recopilacion]
+            return f"¡Sigo aquí! Estábamos en esta pregunta:\n\n{pregunta_actual}"
+        if estado == EstadoChat.FINALIZADO:
+            sesion_service.reiniciar_sesion(telefono)
+            return "¡Bienvenido nuevamente a Servi Elec! 👋\n\n" + _menu_principal()
+        sesion_service.reiniciar_sesion(telefono)
         return _menu_principal()
+
+    # Reinicio explícito (menú, cancelar, salir, etc.) desde cualquier estado
+    if texto_limpio in PALABRAS_REINICIO:
+        habia_progreso = estado in (
+            EstadoChat.RECOPILANDO_DATOS,
+            EstadoChat.COTIZACION_ENVIADA,
+            EstadoChat.FINALIZADO,
+        )
+        sesion_service.reiniciar_sesion(telefono)
+        if habia_progreso:
+            return "Conversación reiniciada. ¡Empecemos de nuevo!\n\n" + _menu_principal()
+        return _menu_principal()
+
+    # Primer mensaje / sesión nueva o expirada
+    if estado == EstadoChat.INICIO:
+        sesion_service.reiniciar_sesion(telefono)
+        return _menu_principal()
+
+    # Retroceder una pregunta (solo durante la recopilación de datos)
+    if texto_limpio in PALABRAS_VOLVER and estado == EstadoChat.RECOPILANDO_DATOS:
+        if sesion.paso_recopilacion == 0:
+            _, pregunta_actual = PREGUNTAS_FICHA[0]
+            return (
+                "Estás en la primera pregunta, no puedes volver atrás.\n\n"
+                "Si quieres cancelar todo escribe *menú*.\n\n"
+                f"Continúa respondiendo: {pregunta_actual}"
+            )
+        sesion.paso_recopilacion -= 1
+        campo_anterior, pregunta_anterior = PREGUNTAS_FICHA[sesion.paso_recopilacion]
+        setattr(sesion, campo_anterior, None)
+        sesion_service.guardar_sesion(sesion)
+        return f"Volviendo a la pregunta anterior:\n\n{pregunta_anterior}"
 
     # ── Menú principal ───────────────────────────────────────
     # El cliente ve: 1-Cotización / 2-Reunión / 3-Nosotros
@@ -248,7 +292,8 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
                     "⚠️ Esa comuna no pertenece a la Quinta Región.\n\n"
                     "Por favor escribe una comuna válida, por ejemplo:\n"
                     "Valparaíso, Viña del Mar, Quilpué, Villa Alemana, "
-                    "San Antonio, Quillota, Los Andes, San Felipe..."
+                    "San Antonio, Quillota, Los Andes, San Felipe...\n\n"
+                    "_Escribe *volver* para corregir la dirección o *menú* para cancelar._"
                 )
             # Guardar con la primera letra en mayúscula
             setattr(sesion, campo, texto.strip().title())
@@ -260,7 +305,7 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
         if sesion.paso_recopilacion < len(PREGUNTAS_FICHA):
             _, siguiente = PREGUNTAS_FICHA[sesion.paso_recopilacion]
             sesion_service.guardar_sesion(sesion)
-            return siguiente
+            return f"{siguiente}\n\n_Escribe *volver* si te equivocaste o *menú* para empezar de nuevo._"
 
         sesion_service.guardar_sesion(sesion)
         return _crear_proyecto(sesion)
