@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import AppLayout from "../components/AppLayout";
 import { getUsuarioNombre, getProyectos, getMateriales } from "../services/api";
+import GuiaRapida from "../components/GuiaRapida";
 
 const COLORES_ESTADO = {
     pendiente: "#2563EB",
@@ -159,6 +160,7 @@ function Home() {
                 </div>
 
                 <div className="header-actions">
+                    <GuiaRapida />
                     <div className="user-box">
                         <div className="user-avatar">{obtenerIniciales(nombre)}</div>
                         <div>

@@ -125,7 +125,7 @@ function Solicitudes() {
     return (
         <div className="d-flex">
             <Sidebar />
-            <div className="flex-grow-1 p-4" style={{ background: "#f8f9fa", minHeight: "100vh" }}>
+            <div className="flex-grow-1 p-4" style={{ background: "#f5f1e8", minHeight: "100vh" }}>
                 <div className="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <h2 className="mb-1">Gestión de cuentas</h2>

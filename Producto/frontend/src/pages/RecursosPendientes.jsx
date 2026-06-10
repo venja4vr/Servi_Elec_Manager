@@ -229,7 +229,6 @@ function RecursosPendientes() {
                 <div className="search-header">
                     <div>
                         <h1>Recursos pendientes</h1>
-
                         <p>
                             Revisa recursos pendientes de
                             compra y asignación.
