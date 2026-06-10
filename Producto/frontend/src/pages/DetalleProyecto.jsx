@@ -59,6 +59,7 @@ function DetalleProyecto() {
     const [recalculando, setRecalculando] = useState(false);
     const [errCostos, setErrCostos] = useState("");
     const [diasEstimados, setDiasEstimados] = useState("1");
+    const [horasDiarias, setHorasDiarias] = useState("8");
     const [cantTrabajadores, setCantTrabajadores] = useState("1");
     const [comunaGrupoId, setComunaGrupoId] = useState("");
     const [pctGanancia, setPctGanancia] = useState("15");
@@ -227,6 +228,7 @@ function DetalleProyecto() {
         }
         // Inicializar campos de costos desde datos del proyecto
         setDiasEstimados(String(proyecto.dias_estimados || 1));
+        setHorasDiarias(String(proyecto.horas_diarias || 8));
         setCantTrabajadores(String(proyecto.cantidad_trabajadores || 1));
         setComunaGrupoId(proyecto.comuna_grupo_id || "");
         setPctGanancia(String(proyecto.porcentaje_ganancia || 15));
@@ -430,6 +432,7 @@ function DetalleProyecto() {
                 try {
                     const nuevosCostos = await actualizarCostosProyecto(id, {
                         dias_estimados: diasN,
+                        horas_diarias: Number(horasDiarias) || 8,
                         cantidad_trabajadores: trabN,
                         comuna_grupo_id: comunaGrupoId || null,
                         porcentaje_ganancia: Number(pctGanancia) || 15,
@@ -461,6 +464,7 @@ function DetalleProyecto() {
         try {
             const nuevosCostos = await actualizarCostosProyecto(id, {
                 dias_estimados: diasN,
+                horas_diarias: Number(horasDiarias) || 8,
                 cantidad_trabajadores: trabN,
                 comuna_grupo_id: comunaGrupoId || null,
                 porcentaje_ganancia: Number(pctGanancia) || 15,
@@ -639,7 +643,7 @@ function DetalleProyecto() {
                                 <div className="detail-row">
                                     <strong>
                                         Mano de obra
-                                        {costos.detalles ? ` (${costos.detalles.cantidad_trabajadores} trab. × ${costos.detalles.dias_estimados} días)` : ""}:
+                                        {costos.detalles ? ` (${costos.detalles.cantidad_trabajadores} trab. × ${costos.detalles.dias_estimados} días × ${costos.detalles.horas_diarias || 8} h/día)` : ""}:
                                     </strong>
                                     <span>{formatearPrecio(costos.costo_mano_obra)}</span>
                                 </div>
@@ -1141,6 +1145,18 @@ function DetalleProyecto() {
                                                 onBlur={() => { if (Number(diasEstimados) < 1) setErrDias("Mínimo 1 día"); }}
                                             />
                                             {errDias && <div className="invalid-feedback">{errDias}</div>}
+                                        </div>
+                                        <div className="col-md-4">
+                                            <label className="form-label form-label-sm">Horas diarias trabajadas</label>
+                                            <input
+                                                type="number"
+                                                className="form-control form-control-sm"
+                                                min="1"
+                                                max="12"
+                                                value={horasDiarias}
+                                                onChange={(e) => setHorasDiarias(e.target.value)}
+                                            />
+                                            <small className="text-muted">8h jornada completa, menos si es trabajo puntual</small>
                                         </div>
                                         <div className="col-md-4">
                                             <label className="form-label form-label-sm">Trabajadores *</label>

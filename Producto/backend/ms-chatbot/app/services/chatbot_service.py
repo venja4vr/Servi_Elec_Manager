@@ -42,6 +42,7 @@ PREGUNTAS_FICHA: List[Tuple[str, str]] = [
     ("comuna",          "¿En qué comuna? (debe ser de la Quinta Región)"),
     ("fecha_preferida", "¿Tienes alguna fecha preferida para el inicio? (o escribe sin preferencia)"),
     ("dias_estimados",  "¿Cuántos días estimas que tomará el trabajo? (escribe un número del 1 al 30)"),
+    ("horas_diarias",   "¿Cuántas horas al día se trabajará? Para servicios puntuales (ej: cambiar interruptores) suele ser 1-2h. Para trabajos completos 8h. Si dudas, escribe 8."),
     ("observaciones",   "¿Alguna observación adicional? (o escribe ninguna)"),
 ]
 
@@ -99,10 +100,8 @@ def _texto_cotizacion(nombre_servicio: str, cotizacion: dict, bencina_ref: float
     if float(total) == 0 and sin_precio:
         return _texto_sin_precio(nombre_servicio)
 
-    MOT_REF = 300_000  # 1 trabajador × 5 días × $60.000 (referencia)
     mat_fmt = f"${float(total):,.0f}".replace(",", ".")
-    mot_fmt = f"${MOT_REF:,.0f}".replace(",", ".")
-    total_calc = float(total) + MOT_REF
+    subtotal = float(total)
 
     lineas = [
         f"📋 *Cotización aproximada — {nombre_servicio}*\n",
@@ -111,18 +110,15 @@ def _texto_cotizacion(nombre_servicio: str, cotizacion: dict, bencina_ref: float
 
     if bencina_ref is not None:
         benc_fmt = f"${bencina_ref:,.0f}".replace(",", ".")
-        lineas.append(f"⛽ Bencina (5 días referencia): *{benc_fmt}*")
-        lineas.append("   _El costo final varía según los días reales del proyecto_")
-        total_calc += bencina_ref
+        lineas.append(f"⛽ Bencina (estimada): *{benc_fmt}*")
+        subtotal += bencina_ref
 
-    lineas.append(f"👷 Servicio profesional: *{mot_fmt}*")
-
-    total_fmt = f"${total_calc:,.0f}".replace(",", ".")
+    subtotal_fmt = f"${subtotal:,.0f}".replace(",", ".")
     lineas += [
         "\n────────────────────",
-        f"💰 *TOTAL estimado: {total_fmt}*",
+        f"💰 *Subtotal estimado: {subtotal_fmt}*",
         "",
-        "⚠️ _Este es un estimado inicial. El precio final se ajusta tras la visita._",
+        "⚠️ _El total final incluye además mano de obra que coordinaremos contigo según los días y horas del trabajo. Este precio se confirma tras la visita técnica._",
     ]
 
     if sin_precio:
@@ -364,6 +360,17 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
                     "_Escribe *volver* para la pregunta anterior o *menú* para cancelar._"
                 )
             setattr(sesion, campo, dias_val)
+        elif campo == "horas_diarias":
+            try:
+                horas_val = int(texto.strip())
+                if not (1 <= horas_val <= 12):
+                    raise ValueError()
+            except (ValueError, TypeError):
+                return (
+                    "Por favor escribe un número entre 1 y 12.\n\n"
+                    "_Escribe *volver* para la pregunta anterior o *menú* para cancelar._"
+                )
+            setattr(sesion, campo, horas_val)
         else:
             setattr(sesion, campo, texto)
 
@@ -400,6 +407,7 @@ def _crear_proyecto(sesion: SesionChat) -> str:
         observaciones   = sesion.observaciones,
         precio_estimado = sesion.precio_estimado,
         dias_estimados  = dias,
+        horas_diarias   = sesion.horas_diarias,
     )
     sesion.estado = EstadoChat.FINALIZADO
     sesion_service.guardar_sesion(sesion)

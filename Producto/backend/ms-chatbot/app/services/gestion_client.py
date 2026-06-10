@@ -235,6 +235,7 @@ def crear_proyecto(
     observaciones: Optional[str] = None,
     precio_estimado: Optional[float] = None,
     dias_estimados: Optional[int] = None,
+    horas_diarias: Optional[int] = None,
 ) -> Optional[Dict[str, Any]]:
 
     # Procesar fecha_preferida y observaciones
@@ -284,6 +285,7 @@ def crear_proyecto(
             "materiales": materiales,
             "comuna_grupo_id": comuna_grupo_id,
             "dias_estimados": dias_estimados,
+            "horas_diarias": horas_diarias,
         }
     else:
         endpoint = "/proyectos/"
@@ -300,6 +302,7 @@ def crear_proyecto(
             "observaciones": observaciones_final,
             "comuna_grupo_id": comuna_grupo_id,
             "dias_estimados": dias_estimados,
+            "horas_diarias": horas_diarias,
         }
 
     try:

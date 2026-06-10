@@ -33,6 +33,7 @@ class SesionChat:
     comuna_grupo_id:   Optional[str] = None # "zona_04_valpo" (resuelto por gestion_client)
     fecha_preferida:   Optional[str] = None
     dias_estimados:    Optional[int] = None # 1–30 días (preguntado en la ficha)
+    horas_diarias:     Optional[int] = None # 1–12 horas por día
     observaciones:     Optional[str] = None # "ninguna"
 
     # Control interno
