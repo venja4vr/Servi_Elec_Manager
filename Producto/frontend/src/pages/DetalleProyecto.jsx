@@ -502,10 +502,6 @@ function DetalleProyecto() {
 
     if (!proyecto) return null;
 
-    const costoMateriales = materiales.reduce(
-        (sum, m) => sum + Number(m.precio_unitario || 0) * Number(m.cantidad_planeada || 0),
-        0
-    );
     const materialesConFalta = materiales.filter((m) => !m.suficiente_stock).length;
     const sePuedeEditar = proyecto.estado === "pendiente" || proyecto.estado === "en_curso";
 
@@ -622,18 +618,55 @@ function DetalleProyecto() {
                     <div className="detail-card">
                         <h2>Costos y recursos</h2>
 
-                        <div className="detail-row">
-                            <strong>Presupuesto estimado:</strong>
-                            <span>{formatearPrecio(proyecto.presupuesto_estimado)}</span>
-                        </div>
-                        <div className="detail-row">
-                            <strong>Costo materiales (interno):</strong>
-                            <span>{formatearPrecio(costoMateriales)}</span>
-                        </div>
-                        <div className="detail-row">
-                            <strong>Presupuesto final:</strong>
-                            <span>{formatearPrecio(proyecto.presupuesto_final)}</span>
-                        </div>
+                        {costos ? (
+                            <div>
+                                {costos.materiales_sin_precio?.length > 0 && (
+                                    <div className="alert alert-warning py-2 small">
+                                        Materiales sin precio: {costos.materiales_sin_precio.join(", ")}
+                                    </div>
+                                )}
+                                <div className="detail-row">
+                                    <strong>Subtotal materiales:</strong>
+                                    <span>{formatearPrecio(costos.subtotal_materiales)}</span>
+                                </div>
+                                <div className="detail-row">
+                                    <strong>
+                                        Costo bencina
+                                        {costos.detalles ? ` (${Number(costos.detalles.km_distancia || 0).toFixed(0)} km, ${costos.detalles.dias_estimados} días)` : ""}:
+                                    </strong>
+                                    <span>{formatearPrecio(costos.costo_bencina)}</span>
+                                </div>
+                                <div className="detail-row">
+                                    <strong>
+                                        Mano de obra
+                                        {costos.detalles ? ` (${costos.detalles.cantidad_trabajadores} trab. × ${costos.detalles.dias_estimados} días)` : ""}:
+                                    </strong>
+                                    <span>{formatearPrecio(costos.costo_mano_obra)}</span>
+                                </div>
+                                <hr style={{ border: "1px solid #e6dfd2", margin: "0.5rem 0" }} />
+                                <div className="detail-row">
+                                    <strong>Subtotal:</strong>
+                                    <span>{formatearPrecio(costos.subtotal_sin_ganancia)}</span>
+                                </div>
+                                <div className="detail-row">
+                                    <strong>Ganancia ({costos.detalles ? Number(costos.detalles.porcentaje_ganancia).toFixed(0) : 15}%):</strong>
+                                    <span>{formatearPrecio(costos.monto_ganancia)}</span>
+                                </div>
+                                <hr style={{ border: "2px solid #4d5b43", margin: "0.5rem 0" }} />
+                                <div className="detail-row" style={{ fontSize: "1.1rem" }}>
+                                    <strong>TOTAL FINAL:</strong>
+                                    <span style={{ fontWeight: "900", color: "#2e321b", fontSize: "1.3rem" }}>
+                                        {formatearPrecio(costos.total_final)}
+                                    </span>
+                                </div>
+                            </div>
+                        ) : (
+                            <p style={{ fontStyle: "italic", color: "#888" }}>
+                                Sin costos calculados. Configure zona, días y trabajadores en el modal de edición.
+                            </p>
+                        )}
+
+                        <hr style={{ border: "1px solid #e6dfd2", margin: "0.75rem 0" }} />
                         <div className="detail-row">
                             <strong>Total materiales:</strong>
                             <span>{materiales.length}</span>
@@ -690,54 +723,6 @@ function DetalleProyecto() {
                         )}
                     </div>
                 </div>
-
-                {/* DESGLOSE DE COSTOS */}
-                {costos && (
-                    <div className="detail-card" style={{ marginTop: "1.5rem" }}>
-                        <h2>Desglose de costos</h2>
-                        {costos.materiales_sin_precio?.length > 0 && (
-                            <div className="alert alert-warning py-2 small">
-                                ⚠️ Materiales sin precio: {costos.materiales_sin_precio.join(", ")}
-                            </div>
-                        )}
-                        <div>
-                            <div className="detail-row">
-                                <strong>Subtotal materiales:</strong>
-                                <span>{formatearPrecio(costos.subtotal_materiales)}</span>
-                            </div>
-                            <div className="detail-row">
-                                <strong>
-                                    Costo bencina
-                                    {costos.detalles ? ` (${Number(costos.detalles.km_distancia || 0).toFixed(0)} km, ${costos.detalles.dias_estimados} días)` : ""}:
-                                </strong>
-                                <span>{formatearPrecio(costos.costo_bencina)}</span>
-                            </div>
-                            <div className="detail-row">
-                                <strong>
-                                    Mano de obra
-                                    {costos.detalles ? ` (${costos.detalles.cantidad_trabajadores} trab. × ${costos.detalles.dias_estimados} días)` : ""}:
-                                </strong>
-                                <span>{formatearPrecio(costos.costo_mano_obra)}</span>
-                            </div>
-                            <hr style={{ border: "1px solid #e6dfd2", margin: "0.5rem 0" }} />
-                            <div className="detail-row">
-                                <strong>Subtotal:</strong>
-                                <span>{formatearPrecio(costos.subtotal_sin_ganancia)}</span>
-                            </div>
-                            <div className="detail-row">
-                                <strong>Ganancia ({costos.detalles ? Number(costos.detalles.porcentaje_ganancia).toFixed(0) : 15}%):</strong>
-                                <span>{formatearPrecio(costos.monto_ganancia)}</span>
-                            </div>
-                            <hr style={{ border: "2px solid #4d5b43", margin: "0.5rem 0" }} />
-                            <div className="detail-row" style={{ fontSize: "1.1rem" }}>
-                                <strong>TOTAL FINAL:</strong>
-                                <span style={{ fontWeight: "900", color: "#2e321b", fontSize: "1.3rem" }}>
-                                    {formatearPrecio(costos.total_final)}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                )}
 
                 {/* MODAL EDITAR */}
                 {mostrarEditar && (
@@ -1140,7 +1125,7 @@ function DetalleProyecto() {
 
                                     {/* ── COSTOS DEL PROYECTO ─────────────── */}
                                     <hr className="my-4" />
-                                    <h6 className="fw-bold mb-3">💰 Costos del proyecto</h6>
+                                    <h6 className="fw-bold mb-3">Costos del proyecto</h6>
                                     {errCostos && (
                                         <div className="alert alert-danger small py-1 mb-2">{errCostos}</div>
                                     )}

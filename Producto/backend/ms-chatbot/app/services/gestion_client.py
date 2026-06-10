@@ -197,6 +197,20 @@ def obtener_bencina_referencia(dias: int = 5) -> Optional[float]:
         return None
 
 
+def obtener_costo_bencina_grupo(grupo_id: str, dias: int) -> Optional[float]:
+    """Calcula costo de bencina para un grupo de zona específico y cantidad de días."""
+    try:
+        r = httpx.get(_url(f"/comuna-grupos/{grupo_id}"), headers=_headers(), timeout=5)
+        if r.status_code == 200:
+            g = r.json()
+            km = (g["rango_km_min"] + g["rango_km_max"]) / 2
+            return km * 2 * g["precio_por_km"] * dias
+        return None
+    except Exception as e:
+        print(f"[GESTION] obtener_costo_bencina_grupo error: {e}")
+        return None
+
+
 def obtener_precio_plantilla(plantilla_id: str) -> Optional[float]:
     try:
         r = httpx.get(_url(f"/plantillas/{plantilla_id}"), headers=_headers(), timeout=5)
@@ -220,6 +234,7 @@ def crear_proyecto(
     fecha_preferida: Optional[str] = None,
     observaciones: Optional[str] = None,
     precio_estimado: Optional[float] = None,
+    dias_estimados: Optional[int] = None,
 ) -> Optional[Dict[str, Any]]:
 
     # Procesar fecha_preferida y observaciones
@@ -268,6 +283,7 @@ def crear_proyecto(
             "observaciones": observaciones_final,
             "materiales": materiales,
             "comuna_grupo_id": comuna_grupo_id,
+            "dias_estimados": dias_estimados,
         }
     else:
         endpoint = "/proyectos/"
@@ -283,6 +299,7 @@ def crear_proyecto(
             "plantilla_id": plantilla_id,
             "observaciones": observaciones_final,
             "comuna_grupo_id": comuna_grupo_id,
+            "dias_estimados": dias_estimados,
         }
 
     try:

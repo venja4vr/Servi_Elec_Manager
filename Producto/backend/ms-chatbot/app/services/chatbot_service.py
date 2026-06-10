@@ -41,6 +41,7 @@ PREGUNTAS_FICHA: List[Tuple[str, str]] = [
     ("direccion",       "¿Cuál es la calle y número donde se realizará el trabajo?"),
     ("comuna",          "¿En qué comuna? (debe ser de la Quinta Región)"),
     ("fecha_preferida", "¿Tienes alguna fecha preferida para el inicio? (o escribe sin preferencia)"),
+    ("dias_estimados",  "¿Cuántos días estimas que tomará el trabajo? (escribe un número del 1 al 30)"),
     ("observaciones",   "¿Alguna observación adicional? (o escribe ninguna)"),
 ]
 
@@ -145,15 +146,47 @@ def _texto_sin_precio(nombre_servicio: str) -> str:
     )
 
 
-def _texto_proyecto_creado(nombre_servicio: str, nombre_cliente: str) -> str:
-    # Confirmación final al cliente
-    return (
-        f"✅ *¡Listo, {nombre_cliente}!*\n\n"
-        f"Tu solicitud de *{nombre_servicio}* fue registrada.\n\n"
-        "Un administrador de Servi Elec revisará los detalles "
-        "y te contactará a la brevedad.\n\n"
-        "_Escribe *menú* si deseas realizar otra consulta._"
-    )
+def _texto_proyecto_creado(
+    nombre_servicio: str,
+    nombre_cliente: str,
+    materiales_cost: float = 0,
+    mot: float = 0,
+    dias: int = 0,
+    bencina: float = None,
+) -> str:
+    nombre_txt = f", {nombre_cliente}" if nombre_cliente else ""
+    lineas = [
+        f"✅ *¡Listo{nombre_txt}!*\n",
+        f"Tu solicitud de *{nombre_servicio}* fue registrada.\n",
+    ]
+
+    if materiales_cost > 0:
+        mat_fmt = f"${materiales_cost:,.0f}".replace(",", ".")
+        mot_fmt = f"${mot:,.0f}".replace(",", ".")
+        total = materiales_cost + mot + (bencina or 0)
+
+        lineas += [
+            "━━━━━━━━━━━━━━━━",
+            "*Resumen de costos:*\n",
+            f"🔧 Materiales: *{mat_fmt}*",
+        ]
+        if bencina is not None:
+            benc_fmt = f"${bencina:,.0f}".replace(",", ".")
+            lineas.append(f"⛽ Bencina ({dias} días): *{benc_fmt}*")
+        lineas.append(f"👷 Mano de obra ({dias} días): *{mot_fmt}*")
+        total_fmt = f"${total:,.0f}".replace(",", ".")
+        lineas += [
+            "\n────────────────────",
+            f"💰 *TOTAL estimado: {total_fmt}*",
+            "",
+            "_Precio final se confirma tras visita técnica._\n",
+        ]
+
+    lineas += [
+        "Un administrador revisará los detalles y te contactará.",
+        "_Escribe *menú* si deseas otra consulta._",
+    ]
+    return "\n".join(lineas)
 
 
 # ── Motor principal ───────────────────────────────────────────
@@ -320,6 +353,17 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
             # Resolver grupo de distancia (best-effort: si falla, se crea el proyecto sin grupo)
             grupo = gestion_client.obtener_comuna_grupo_por_nombre(texto_lower)
             sesion.comuna_grupo_id = grupo.get("id_cg") if grupo else None
+        elif campo == "dias_estimados":
+            try:
+                dias_val = int(texto.strip())
+                if not (1 <= dias_val <= 30):
+                    raise ValueError()
+            except (ValueError, TypeError):
+                return (
+                    "Por favor escribe un número entre 1 y 30.\n\n"
+                    "_Escribe *volver* para la pregunta anterior o *menú* para cancelar._"
+                )
+            setattr(sesion, campo, dias_val)
         else:
             setattr(sesion, campo, texto)
 
@@ -343,6 +387,7 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
 
 
 def _crear_proyecto(sesion: SesionChat) -> str:
+    dias = sesion.dias_estimados or 5
     proyecto = gestion_client.crear_proyecto(
         nombre_cliente  = sesion.nombre_cliente or "Cliente WhatsApp",
         telefono        = sesion.telefono,
@@ -354,6 +399,7 @@ def _crear_proyecto(sesion: SesionChat) -> str:
         fecha_preferida = sesion.fecha_preferida,
         observaciones   = sesion.observaciones,
         precio_estimado = sesion.precio_estimado,
+        dias_estimados  = dias,
     )
     sesion.estado = EstadoChat.FINALIZADO
     sesion_service.guardar_sesion(sesion)
@@ -377,7 +423,19 @@ def _crear_proyecto(sesion: SesionChat) -> str:
             )
             whatsapp_service.enviar_mensaje(ADMIN_PHONE_NUMBER, msg_admin)
 
-        return _texto_proyecto_creado(sesion.nombre_servicio, sesion.nombre_cliente or "")
+        # Calcular bencina con días reales y zona real del proyecto
+        bencina = None
+        if sesion.comuna_grupo_id:
+            bencina = gestion_client.obtener_costo_bencina_grupo(sesion.comuna_grupo_id, dias)
+
+        return _texto_proyecto_creado(
+            sesion.nombre_servicio,
+            sesion.nombre_cliente or "",
+            materiales_cost=sesion.precio_estimado or 0,
+            mot=dias * 60_000,
+            dias=dias,
+            bencina=bencina,
+        )
 
     return (
         "⚠️ Hubo un error al registrar tu solicitud.\n"
