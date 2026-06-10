@@ -15,6 +15,7 @@ class Material(Base):
     categoria_id               = Column(String(20), ForeignKey("categoria.id_categoria"), nullable=False)
     precio_sodimac_actual      = Column(Numeric(12, 2), nullable=True)
     precio_sodimac_actualizado = Column(DateTime, nullable=True)
+    unidad_compra              = Column(String(20), nullable=False, default="unidad")
 
     categoria = relationship("Categoria", backref="materiales")
 

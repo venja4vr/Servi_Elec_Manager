@@ -99,6 +99,78 @@ def obtener_plantillas_por_categoria(categoria_nombre: str) -> Optional[List[Dic
         return None
 
 
+# Mapa local: nombre normalizado de comuna → id_cg del grupo de distancia.
+# Se usa para no depender de búsqueda por texto en ms-gestion.
+_COMUNA_A_GRUPO_ID: Dict[str, str] = {
+    # Zona 1 — Local (0-15 km)
+    "la calera": "zona_01_local",
+    "la cruz":   "zona_01_local",
+    "san pedro": "zona_01_local",
+    "quillota":  "zona_01_local",
+    # Zona 2 — Próxima (16-35 km)
+    "hijuelas": "zona_02_proxima",
+    "nogales":  "zona_02_proxima",
+    "limache":  "zona_02_proxima",
+    "olmué":    "zona_02_proxima",
+    "olmue":    "zona_02_proxima",
+    # Zona 3 — Semi-media (36-55 km)
+    "catemu":        "zona_03_semi",
+    "llaillay":      "zona_03_semi",
+    "quilpué":       "zona_03_semi",
+    "quilpue":       "zona_03_semi",
+    "villa alemana": "zona_03_semi",
+    # Zona 4 — Valparaíso y Costa Norte (56-72 km)
+    "san felipe":   "zona_04_valpo",
+    "panquehue":    "zona_04_valpo",
+    "santa maría":  "zona_04_valpo",
+    "santa maria":  "zona_04_valpo",
+    "casablanca":   "zona_04_valpo",
+    "concón":       "zona_04_valpo",
+    "concon":       "zona_04_valpo",
+    "viña del mar": "zona_04_valpo",
+    "vina del mar": "zona_04_valpo",
+    "valparaíso":   "zona_04_valpo",
+    "valparaiso":   "zona_04_valpo",
+    "puchuncaví":   "zona_04_valpo",
+    "puchuncavi":   "zona_04_valpo",
+    "quintero":     "zona_04_valpo",
+    # Zona 5 — Andes e Interior (73-90 km)
+    "rinconada":   "zona_05_andes",
+    "calle larga": "zona_05_andes",
+    "los andes":   "zona_05_andes",
+    "san esteban": "zona_05_andes",
+    "putaendo":    "zona_05_andes",
+    # Zona 6 — Costa Sur Media (91-110 km)
+    "algarrobo": "zona_06_costa_media",
+    "el quisco": "zona_06_costa_media",
+    "el tabo":   "zona_06_costa_media",
+    # Zona 7 — San Antonio (111-125 km)
+    "cartagena":   "zona_07_san_antonio",
+    "san antonio": "zona_07_san_antonio",
+    # Zona 8 — Extremo Sur (126-145 km)
+    "santo domingo": "zona_08_extremo",
+}
+
+
+def obtener_comuna_grupo_por_nombre(nombre: str) -> Optional[Dict[str, Any]]:
+    """
+    Devuelve el grupo-comuna (dict con id_cg, nombre, rango_km, etc.) que corresponde
+    al nombre de la comuna, consultando ms-gestion. Devuelve None si la comuna no tiene
+    grupo asignado o ms-gestion no responde.
+    """
+    grupo_id = _COMUNA_A_GRUPO_ID.get(nombre.strip().lower())
+    if not grupo_id:
+        return None
+    try:
+        r = httpx.get(_url(f"/comuna-grupos/{grupo_id}"), headers=_headers(), timeout=5)
+        if r.status_code == 200:
+            return r.json()
+        return None
+    except Exception as e:
+        print(f"[GESTION] obtener_comuna_grupo_por_nombre error: {e}")
+        return None
+
+
 def obtener_cotizacion_plantilla(plantilla_id: str) -> Optional[Dict[str, Any]]:
     """Devuelve la cotizacion calculada (total con precios Sodimac) de una plantilla."""
     try:
@@ -129,7 +201,8 @@ def crear_proyecto(
     plantilla_id: str,
     nombre_servicio: str,
     direccion: Optional[str] = None,
-    comuna: Optional[str] = None,        # ← NUEVO PARÁMETRO
+    comuna: Optional[str] = None,
+    comuna_grupo_id: Optional[str] = None,
     fecha_preferida: Optional[str] = None,
     observaciones: Optional[str] = None,
     precio_estimado: Optional[float] = None,
@@ -174,12 +247,13 @@ def crear_proyecto(
             "tipo_proyecto": "Chatbot",
             "nombre_cliente": nombre_cliente,
             "telefono_cliente": telefono,
-            "direccion_cliente": direccion_completa,   # ← combinada
+            "direccion_cliente": direccion_completa,
             "fecha_inicio": fecha_inicio_final,
             "presupuesto_estimado": precio_estimado,
             "plantilla_id": plantilla_id,
             "observaciones": observaciones_final,
             "materiales": materiales,
+            "comuna_grupo_id": comuna_grupo_id,
         }
     else:
         endpoint = "/proyectos/"
@@ -188,12 +262,13 @@ def crear_proyecto(
             "tipo_proyecto": "Chatbot",
             "nombre_cliente": nombre_cliente,
             "telefono_cliente": telefono,
-            "direccion_cliente": direccion_completa,   # ← combinada
+            "direccion_cliente": direccion_completa,
             "fecha_inicio": fecha_inicio_final,
             "estado": "pendiente",
             "presupuesto_estimado": precio_estimado,
             "plantilla_id": plantilla_id,
             "observaciones": observaciones_final,
+            "comuna_grupo_id": comuna_grupo_id,
         }
 
     try:

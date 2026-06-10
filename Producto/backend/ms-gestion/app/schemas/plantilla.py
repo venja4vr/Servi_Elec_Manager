@@ -23,6 +23,7 @@ class PlantillaCreate(BaseModel):
     categoria: Optional[str] = None
     activa: bool = True
     precio_estimado: Optional[Decimal] = Field(default=None, ge=0)
+    dias_default: Optional[int] = Field(default=1, ge=1)
     materiales: List[MaterialPlantillaIn] = []
 
 
@@ -32,6 +33,7 @@ class PlantillaUpdate(BaseModel):
     categoria: Optional[str] = None
     activa: Optional[bool] = None
     precio_estimado: Optional[Decimal] = Field(default=None, ge=0)
+    dias_default: Optional[int] = Field(default=None, ge=1)
     materiales: Optional[List[MaterialPlantillaIn]] = None
 
 
@@ -44,6 +46,7 @@ class PlantillaOut(BaseModel):
     categoria: Optional[str]
     activa: bool = True
     num_materiales: int = 0
+    dias_default: Optional[int] = 1
 
     class Config:
         from_attributes = True

@@ -297,6 +297,9 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
                 )
             # Guardar con la primera letra en mayúscula
             setattr(sesion, campo, texto.strip().title())
+            # Resolver grupo de distancia (best-effort: si falla, se crea el proyecto sin grupo)
+            grupo = gestion_client.obtener_comuna_grupo_por_nombre(texto_lower)
+            sesion.comuna_grupo_id = grupo.get("id_cg") if grupo else None
         else:
             setattr(sesion, campo, texto)
 
@@ -326,7 +329,8 @@ def _crear_proyecto(sesion: SesionChat) -> str:
         plantilla_id    = sesion.plantilla_id,
         nombre_servicio = sesion.nombre_servicio,
         direccion       = sesion.direccion,
-        comuna          = sesion.comuna,          # ← NUEVA LÍNEA
+        comuna          = sesion.comuna,
+        comuna_grupo_id = sesion.comuna_grupo_id,
         fecha_preferida = sesion.fecha_preferida,
         observaciones   = sesion.observaciones,
         precio_estimado = sesion.precio_estimado,

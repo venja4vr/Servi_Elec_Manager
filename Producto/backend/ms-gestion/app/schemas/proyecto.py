@@ -4,6 +4,7 @@ from typing import Optional, List
 from decimal import Decimal
 from datetime import date
 from app.schemas.plantilla import PlantillaOut
+from app.schemas.comuna_grupo import ComunaGrupoOut
 
 _RE_TELEFONO_CL = re.compile(r'^(\+?56\s?)?9\s?\d{4}\s?\d{4}$|^569\d{8}$')
 
@@ -21,6 +22,12 @@ class ProyectoCreate(BaseModel):
     fecha_termino_maximo: Optional[date] = None
     plantilla_id: Optional[str] = None
     observaciones: Optional[str] = None
+    # Campos de costos (opcionales para compatibilidad)
+    dias_estimados: Optional[int] = Field(default=None, ge=1)
+    cantidad_trabajadores: Optional[int] = Field(default=None, ge=1)
+    comuna_grupo_id: Optional[str] = None
+    porcentaje_ganancia: Optional[Decimal] = Field(default=None, ge=0)
+    precio_dia_trabajador: Optional[Decimal] = Field(default=None, ge=0)
 
 
 class ProyectoUpdate(BaseModel):
@@ -36,6 +43,12 @@ class ProyectoUpdate(BaseModel):
     fecha_termino_maximo: Optional[date] = None
     plantilla_id: Optional[str] = None
     observaciones: Optional[str] = None
+    # Campos de costos (opcionales para compatibilidad)
+    dias_estimados: Optional[int] = Field(default=None, ge=1)
+    cantidad_trabajadores: Optional[int] = Field(default=None, ge=1)
+    comuna_grupo_id: Optional[str] = None
+    porcentaje_ganancia: Optional[Decimal] = Field(default=None, ge=0)
+    precio_dia_trabajador: Optional[Decimal] = Field(default=None, ge=0)
 
     @field_validator("nombre_proyecto")
     @classmethod
@@ -107,10 +120,49 @@ class ProyectoOut(BaseModel):
     fecha_termino_maximo: Optional[date]
     plantilla_id: Optional[str]
     observaciones: Optional[str]
+    # Campos de costos
+    dias_estimados: Optional[int] = None
+    cantidad_trabajadores: Optional[int] = None
+    comuna_grupo_id: Optional[str] = None
+    porcentaje_ganancia: Optional[Decimal] = None
+    precio_dia_trabajador: Optional[Decimal] = None
     plantilla: Optional[PlantillaOut] = None
+    comuna_grupo: Optional[ComunaGrupoOut] = None
 
     class Config:
         from_attributes = True
+
+
+# ── Costos ───────────────────────────────────────────────────────────────────
+
+class ProyectoCostosUpdate(BaseModel):
+    """Body para PUT /proyectos/{id}/costos — todos los campos son opcionales."""
+    dias_estimados: Optional[int] = Field(default=None, ge=1)
+    cantidad_trabajadores: Optional[int] = Field(default=None, ge=1)
+    comuna_grupo_id: Optional[str] = None
+    porcentaje_ganancia: Optional[Decimal] = Field(default=None, ge=0, le=100)
+    precio_dia_trabajador: Optional[Decimal] = Field(default=None, ge=0)
+
+
+class DetallesCostosOut(BaseModel):
+    km_distancia: float
+    dias_estimados: int
+    cantidad_trabajadores: int
+    precio_dia_trabajador: float
+    porcentaje_ganancia: float
+    comuna_grupo_id: Optional[str]
+
+
+class ProyectoCostosOut(BaseModel):
+    proyecto_id: str
+    subtotal_materiales: Decimal
+    costo_bencina: Decimal
+    costo_mano_obra: Decimal
+    subtotal_sin_ganancia: Decimal
+    monto_ganancia: Decimal
+    total_final: Decimal
+    materiales_sin_precio: List[str]
+    detalles: DetallesCostosOut
 
 
 # Schema para crear proyecto CON sus materiales planeados

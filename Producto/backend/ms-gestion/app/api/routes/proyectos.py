@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -9,10 +9,14 @@ from app.schemas.proyecto import (
     ProyectoUpdate,
     ProyectoOut,
     ProyectoCreateConMateriales,
+    ProyectoCostosUpdate,
+    ProyectoCostosOut,
 )
 from app.schemas.proyecto_material import AgregarMaterialProyecto, ActualizarMaterialProyecto
 from app.utils.auth import get_current_user, require_admin
 from app.services.pdf_service import generar_pdf_proyecto, generar_pdf_cliente
+from app.services import costo_service
+from app.models.proyecto import Proyecto
 
 
 router = APIRouter(prefix="/proyectos", tags=["Proyectos"])
@@ -172,3 +176,49 @@ def cambiar_estado(
 @router.delete("/{proyecto_id}")
 def eliminar(proyecto_id: str, db: Session = Depends(get_db), _=Depends(require_admin)):
     return proyecto_controller.delete(db, proyecto_id)
+
+
+# ── Costos ────────────────────────────────────────────────────────────────────
+
+@router.get("/{proyecto_id}/costos", response_model=ProyectoCostosOut)
+def obtener_costos(
+    proyecto_id: str,
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """Calcula y devuelve el desglose de costos del proyecto (solo lectura)."""
+    return costo_service.calcular_costos_proyecto(proyecto_id, db)
+
+
+@router.put("/{proyecto_id}/costos", response_model=ProyectoCostosOut)
+def actualizar_costos(
+    proyecto_id: str,
+    data: ProyectoCostosUpdate,
+    db: Session = Depends(get_db),
+    _=Depends(require_admin),
+):
+    """
+    Actualiza los parámetros de costo del proyecto (solo los campos enviados)
+    y devuelve el desglose recalculado.
+    """
+    proyecto = db.query(Proyecto).filter(Proyecto.id_proyecto == proyecto_id).first()
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+
+    campos = data.model_dump(exclude_none=True)
+    for campo, valor in campos.items():
+        setattr(proyecto, campo, valor)
+
+    db.commit()
+    db.refresh(proyecto)
+    return costo_service.calcular_costos_proyecto(proyecto_id, db)
+
+
+@router.post("/{proyecto_id}/recalcular-costos", response_model=ProyectoCostosOut)
+def recalcular_costos(
+    proyecto_id: str,
+    db: Session = Depends(get_db),
+    _=Depends(require_admin),
+):
+    """Fuerza el recálculo del desglose de costos con los valores actuales del proyecto."""
+    return costo_service.calcular_costos_proyecto(proyecto_id, db)

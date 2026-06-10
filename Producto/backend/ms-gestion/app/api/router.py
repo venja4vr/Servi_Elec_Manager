@@ -8,6 +8,7 @@ from app.api.routes.movimientos import router as movimientos_router
 from app.api.routes.usuarios import router as usuarios_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.comparador import router as comparador_router
+from app.api.routes.comuna_grupos import router as comuna_grupos_router
 
 api_router = APIRouter()
 
@@ -20,3 +21,4 @@ api_router.include_router(movimientos_router)
 api_router.include_router(usuarios_router)
 api_router.include_router(auth_router)
 api_router.include_router(comparador_router)
+api_router.include_router(comuna_grupos_router)

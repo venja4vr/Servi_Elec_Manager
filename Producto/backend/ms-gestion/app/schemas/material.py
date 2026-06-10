@@ -4,6 +4,9 @@ from decimal import Decimal
 from datetime import datetime
 from app.schemas.categoria import CategoriaOut
 
+UNIDADES_COMPRA_VALIDAS = ["unidad", "metro", "rollo", "kilo", "litro"]
+
+
 class MaterialCreate(BaseModel):
     nombre_material: str
     descripcion: Optional[str] = None
@@ -11,6 +14,7 @@ class MaterialCreate(BaseModel):
     stock_critico: int = Field(default=0, ge=0)
     precio_unitario: Decimal = Field(default=0, ge=0)
     categoria_id: str
+    unidad_compra: str = Field(default="unidad")
 
 class MaterialUpdate(BaseModel):
     nombre_material: Optional[str] = None
@@ -19,6 +23,7 @@ class MaterialUpdate(BaseModel):
     stock_critico: Optional[int] = Field(default=None, ge=0)
     precio_unitario: Optional[Decimal] = Field(default=None, ge=0)
     categoria_id: Optional[str] = None
+    unidad_compra: Optional[str] = None
 
 class MaterialOut(BaseModel):
     id_material: str
@@ -29,6 +34,7 @@ class MaterialOut(BaseModel):
     precio_unitario: Decimal
     categoria_id: str
     stock_bajo: bool
+    unidad_compra: str = "unidad"
     categoria: Optional[CategoriaOut] = None
     precio_sodimac_actual: Optional[Decimal] = None
     precio_sodimac_actualizado: Optional[datetime] = None
