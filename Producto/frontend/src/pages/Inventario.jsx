@@ -26,6 +26,8 @@ function tiempoDesde(ts) {
     return `hace ${d} días`;
 }
 
+const UNIDADES_PLURAL = { metro: "metros", rollo: "rollos", kilo: "kilos", litro: "litros" };
+
 function colorPrecioSodimac(ts) {
     if (!ts) return "#6b7280";
     const h = Math.floor((Date.now() - new Date(ts)) / 3600000);
@@ -315,6 +317,9 @@ function Inventario() {
                                 <div>
                                     <span className={claseStock(material)}>
                                         {material.stock_actual}
+                                        {material.unidad_compra && material.unidad_compra !== "unidad"
+                                            ? ` ${UNIDADES_PLURAL[material.unidad_compra] || material.unidad_compra}`
+                                            : ""}
                                     </span>
                                     {material.stock_actual <= material.stock_critico && material.stock_actual > 0 && (
                                         <p style={{ fontSize: "0.75rem", color: "#a66a00", margin: "0.25rem 0 0" }}>

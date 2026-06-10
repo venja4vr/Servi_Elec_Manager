@@ -183,6 +183,20 @@ def obtener_cotizacion_plantilla(plantilla_id: str) -> Optional[Dict[str, Any]]:
         return None
 
 
+def obtener_bencina_referencia(dias: int = 5) -> Optional[float]:
+    """Estima costo de bencina para zona media (zona_04_valpo) como referencia en cotizaciones pre-registro."""
+    try:
+        r = httpx.get(_url("/comuna-grupos/zona_04_valpo"), headers=_headers(), timeout=5)
+        if r.status_code == 200:
+            g = r.json()
+            km = (g["rango_km_min"] + g["rango_km_max"]) / 2
+            return km * 2 * g["precio_por_km"] * dias
+        return None
+    except Exception as e:
+        print(f"[GESTION] obtener_bencina_referencia error: {e}")
+        return None
+
+
 def obtener_precio_plantilla(plantilla_id: str) -> Optional[float]:
     try:
         r = httpx.get(_url(f"/plantillas/{plantilla_id}"), headers=_headers(), timeout=5)

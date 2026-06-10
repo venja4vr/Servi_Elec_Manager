@@ -11,6 +11,9 @@ import {
     quitarMaterialProyecto,
     descargarPdfProyecto,
     descargarPdfClienteProyecto,
+    getComunaGrupos,
+    getCostosProyecto,
+    actualizarCostosProyecto,
 } from "../services/api";
 import {
     validarTexto,
@@ -50,6 +53,19 @@ function DetalleProyecto() {
     const [datosEdicion, setDatosEdicion] = useState({});
     const [guardando, setGuardando] = useState(false);
 
+    // ── Estado costos ─────────────────────────────────────────────────────────
+    const [comunaGrupos, setComunaGrupos] = useState([]);
+    const [costos, setCostos] = useState(null);
+    const [recalculando, setRecalculando] = useState(false);
+    const [errCostos, setErrCostos] = useState("");
+    const [diasEstimados, setDiasEstimados] = useState("1");
+    const [cantTrabajadores, setCantTrabajadores] = useState("1");
+    const [comunaGrupoId, setComunaGrupoId] = useState("");
+    const [pctGanancia, setPctGanancia] = useState("15");
+    const [precioDia, setPrecioDia] = useState("60000");
+    const [errDias, setErrDias] = useState("");
+    const [errTrabajadores, setErrTrabajadores] = useState("");
+
     const [errEdNombreProyecto, setErrEdNombreProyecto] = useState("");
     const [errEdTipoProyecto, setErrEdTipoProyecto] = useState("");
     const [errEdNombreCliente, setErrEdNombreCliente] = useState("");
@@ -69,12 +85,14 @@ function DetalleProyecto() {
         setCargando(true);
         setError("");
         try {
-            const [datosProyecto, datosMateriales] = await Promise.all([
+            const [datosProyecto, datosMateriales, datosCostos] = await Promise.all([
                 getProyecto(id),
                 getMaterialesPlaneadosDeProyecto(id),
+                getCostosProyecto(id).catch(() => null),
             ]);
             setProyecto(datosProyecto);
             setMateriales(datosMateriales);
+            setCostos(datosCostos);
         } catch (err) {
             setError(err.message || "Error al cargar el proyecto");
         } finally {
@@ -204,8 +222,22 @@ function DetalleProyecto() {
         try {
             const todos = await getMateriales();
             setTodosMats(todos);
-        } catch (_) {
-            // non-critical: no afecta el formulario principal
+        } catch {
+            // non-critical
+        }
+        // Inicializar campos de costos desde datos del proyecto
+        setDiasEstimados(String(proyecto.dias_estimados || 1));
+        setCantTrabajadores(String(proyecto.cantidad_trabajadores || 1));
+        setComunaGrupoId(proyecto.comuna_grupo_id || "");
+        setPctGanancia(String(proyecto.porcentaje_ganancia || 15));
+        setPrecioDia(String(proyecto.precio_dia_trabajador || 60000));
+        setErrDias(""); setErrTrabajadores(""); setErrCostos("");
+        // Cargar grupos de comunas para el select
+        try {
+            const grupos = await getComunaGrupos();
+            setComunaGrupos(grupos);
+        } catch {
+            // non-critical
         }
     };
 
@@ -391,6 +423,23 @@ function DetalleProyecto() {
                 observaciones: datosEdicion.observaciones?.trim() || null,
             };
             await actualizarProyecto(id, payload);
+            // Actualizar parámetros de costos (no crítico — no bloquea el guardado)
+            const diasN = Number(diasEstimados);
+            const trabN = Number(cantTrabajadores);
+            if (diasN >= 1 && trabN >= 1) {
+                try {
+                    const nuevosCostos = await actualizarCostosProyecto(id, {
+                        dias_estimados: diasN,
+                        cantidad_trabajadores: trabN,
+                        comuna_grupo_id: comunaGrupoId || null,
+                        porcentaje_ganancia: Number(pctGanancia) || 15,
+                        precio_dia_trabajador: Number(precioDia) || 60000,
+                    });
+                    setCostos(nuevosCostos);
+                } catch {
+                    // non-critical
+                }
+            }
             setMostrarEditar(false);
             setMensajeOk("Proyecto actualizado correctamente.");
             setTimeout(() => setMensajeOk(""), 3000);
@@ -399,6 +448,29 @@ function DetalleProyecto() {
             setError(err.message || "Error al actualizar el proyecto");
         } finally {
             setGuardando(false);
+        }
+    };
+
+    const handleRecalcularCostos = async () => {
+        const diasN = Number(diasEstimados);
+        const trabN = Number(cantTrabajadores);
+        if (diasN < 1) { setErrDias("Mínimo 1 día"); return; }
+        if (trabN < 1) { setErrTrabajadores("Mínimo 1 trabajador"); return; }
+        setRecalculando(true);
+        setErrCostos("");
+        try {
+            const nuevosCostos = await actualizarCostosProyecto(id, {
+                dias_estimados: diasN,
+                cantidad_trabajadores: trabN,
+                comuna_grupo_id: comunaGrupoId || null,
+                porcentaje_ganancia: Number(pctGanancia) || 15,
+                precio_dia_trabajador: Number(precioDia) || 60000,
+            });
+            setCostos(nuevosCostos);
+        } catch (err) {
+            setErrCostos(err.message || "Error al recalcular costos");
+        } finally {
+            setRecalculando(false);
         }
     };
 
@@ -618,6 +690,54 @@ function DetalleProyecto() {
                         )}
                     </div>
                 </div>
+
+                {/* DESGLOSE DE COSTOS */}
+                {costos && (
+                    <div className="detail-card" style={{ marginTop: "1.5rem" }}>
+                        <h2>Desglose de costos</h2>
+                        {costos.materiales_sin_precio?.length > 0 && (
+                            <div className="alert alert-warning py-2 small">
+                                ⚠️ Materiales sin precio: {costos.materiales_sin_precio.join(", ")}
+                            </div>
+                        )}
+                        <div>
+                            <div className="detail-row">
+                                <strong>Subtotal materiales:</strong>
+                                <span>{formatearPrecio(costos.subtotal_materiales)}</span>
+                            </div>
+                            <div className="detail-row">
+                                <strong>
+                                    Costo bencina
+                                    {costos.detalles ? ` (${Number(costos.detalles.km_distancia || 0).toFixed(0)} km, ${costos.detalles.dias_estimados} días)` : ""}:
+                                </strong>
+                                <span>{formatearPrecio(costos.costo_bencina)}</span>
+                            </div>
+                            <div className="detail-row">
+                                <strong>
+                                    Mano de obra
+                                    {costos.detalles ? ` (${costos.detalles.cantidad_trabajadores} trab. × ${costos.detalles.dias_estimados} días)` : ""}:
+                                </strong>
+                                <span>{formatearPrecio(costos.costo_mano_obra)}</span>
+                            </div>
+                            <hr style={{ border: "1px solid #e6dfd2", margin: "0.5rem 0" }} />
+                            <div className="detail-row">
+                                <strong>Subtotal:</strong>
+                                <span>{formatearPrecio(costos.subtotal_sin_ganancia)}</span>
+                            </div>
+                            <div className="detail-row">
+                                <strong>Ganancia ({costos.detalles ? Number(costos.detalles.porcentaje_ganancia).toFixed(0) : 15}%):</strong>
+                                <span>{formatearPrecio(costos.monto_ganancia)}</span>
+                            </div>
+                            <hr style={{ border: "2px solid #4d5b43", margin: "0.5rem 0" }} />
+                            <div className="detail-row" style={{ fontSize: "1.1rem" }}>
+                                <strong>TOTAL FINAL:</strong>
+                                <span style={{ fontWeight: "900", color: "#2e321b", fontSize: "1.3rem" }}>
+                                    {formatearPrecio(costos.total_final)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* MODAL EDITAR */}
                 {mostrarEditar && (
@@ -1017,6 +1137,87 @@ function DetalleProyecto() {
                                             )}
                                         </div>
                                     )}
+
+                                    {/* ── COSTOS DEL PROYECTO ─────────────── */}
+                                    <hr className="my-4" />
+                                    <h6 className="fw-bold mb-3">💰 Costos del proyecto</h6>
+                                    {errCostos && (
+                                        <div className="alert alert-danger small py-1 mb-2">{errCostos}</div>
+                                    )}
+                                    <div className="row g-3 mb-3">
+                                        <div className="col-md-4">
+                                            <label className="form-label form-label-sm">Días estimados *</label>
+                                            <input
+                                                type="number"
+                                                className={`form-control form-control-sm ${errDias ? "is-invalid" : ""}`}
+                                                min="1"
+                                                value={diasEstimados}
+                                                onChange={(e) => { setDiasEstimados(e.target.value); setErrDias(""); }}
+                                                onBlur={() => { if (Number(diasEstimados) < 1) setErrDias("Mínimo 1 día"); }}
+                                            />
+                                            {errDias && <div className="invalid-feedback">{errDias}</div>}
+                                        </div>
+                                        <div className="col-md-4">
+                                            <label className="form-label form-label-sm">Trabajadores *</label>
+                                            <input
+                                                type="number"
+                                                className={`form-control form-control-sm ${errTrabajadores ? "is-invalid" : ""}`}
+                                                min="1"
+                                                value={cantTrabajadores}
+                                                onChange={(e) => { setCantTrabajadores(e.target.value); setErrTrabajadores(""); }}
+                                                onBlur={() => { if (Number(cantTrabajadores) < 1) setErrTrabajadores("Mínimo 1"); }}
+                                            />
+                                            {errTrabajadores
+                                                ? <div className="invalid-feedback">{errTrabajadores}</div>
+                                                : <small className="text-muted">1 si solo es Avercio</small>
+                                            }
+                                        </div>
+                                        <div className="col-md-4">
+                                            <label className="form-label form-label-sm">Precio día/trab. (CLP)</label>
+                                            <input
+                                                type="number"
+                                                className="form-control form-control-sm"
+                                                min="0"
+                                                value={precioDia}
+                                                onChange={(e) => setPrecioDia(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="col-md-8">
+                                            <label className="form-label form-label-sm">Zona del proyecto</label>
+                                            <select
+                                                className="form-select form-select-sm"
+                                                value={comunaGrupoId}
+                                                onChange={(e) => setComunaGrupoId(e.target.value)}
+                                            >
+                                                <option value="">Sin zona asignada (sin costo bencina)</option>
+                                                {comunaGrupos.map((g) => (
+                                                    <option key={g.id_cg} value={g.id_cg}>
+                                                        {g.nombre} ({g.rango_km_min}–{g.rango_km_max} km)
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="col-md-4">
+                                            <label className="form-label form-label-sm">% Ganancia (0–100)</label>
+                                            <input
+                                                type="number"
+                                                className="form-control form-control-sm"
+                                                min="0"
+                                                max="100"
+                                                step="0.5"
+                                                value={pctGanancia}
+                                                onChange={(e) => setPctGanancia(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className="btn btn-outline-success btn-sm"
+                                        onClick={handleRecalcularCostos}
+                                        disabled={recalculando}
+                                    >
+                                        {recalculando ? "Calculando..." : "Recalcular costos"}
+                                    </button>
 
                                 </div>
                                 <div className="modal-footer">

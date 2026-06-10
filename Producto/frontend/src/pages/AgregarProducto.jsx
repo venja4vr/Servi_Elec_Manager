@@ -19,6 +19,7 @@ function AgregarProducto() {
     const [precio, setPrecio] = useState("");
     const [categoriaId, setCategoriaId] = useState("");
     const [categorias, setCategorias] = useState([]);
+    const [unidadCompra, setUnidadCompra] = useState("unidad");
 
     // Errores por campo
     const [errorNombre, setErrorNombre] = useState("");
@@ -89,6 +90,7 @@ function AgregarProducto() {
                     stock_critico: Number(stockCritico),
                     precio_unitario: Number(precio),
                     categoria_id: categoriaId,
+                    unidad_compra: unidadCompra,
                 }),
             });
             navigate("/inventario");
@@ -210,6 +212,20 @@ function AgregarProducto() {
                                     Cantidad mínima antes de alerta de reposición
                                 </small>
                             )}
+                        </div>
+
+                        <div className="form-field">
+                            <label>Unidad de compra</label>
+                            <select
+                                value={unidadCompra}
+                                onChange={(e) => setUnidadCompra(e.target.value)}
+                            >
+                                <option value="unidad">Unidad</option>
+                                <option value="metro">Metro</option>
+                                <option value="rollo">Rollo</option>
+                                <option value="kilo">Kilo</option>
+                                <option value="litro">Litro</option>
+                            </select>
                         </div>
 
                         <div className="form-field full">

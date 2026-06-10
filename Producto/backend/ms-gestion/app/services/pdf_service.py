@@ -29,6 +29,7 @@ from reportlab.pdfgen import canvas as pdf_canvas
 from sqlalchemy.orm import Session
 
 from app.services.proyecto_service import obtener_proyecto, obtener_materiales_planeados
+from app.services.costo_service import calcular_costos_proyecto
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -429,6 +430,59 @@ def _tabla_materiales_cliente(materiales: list) -> Table:
     return t
 
 
+def _tabla_desglose_costos(costos: dict) -> Table:
+    """Tabla de desglose completo: materiales, bencina, mano de obra, subtotal, ganancia."""
+    det = costos.get("detalles", {})
+    dias = int(det.get("dias_estimados", 1))
+    km = float(det.get("km_distancia", 0))
+    trabaj = int(det.get("cantidad_trabajadores", 1))
+    ganancia_pct = float(det.get("porcentaje_ganancia", 15))
+    precio_dia = float(det.get("precio_dia_trabajador", 60000))
+
+    s_mat   = costos.get("subtotal_materiales", 0)
+    s_benc  = costos.get("costo_bencina", 0)
+    s_mdo   = costos.get("costo_mano_obra", 0)
+    s_sub   = costos.get("subtotal_sin_ganancia", 0)
+    s_gan   = costos.get("monto_ganancia", 0)
+
+    plural_dia = "días" if dias > 1 else "día"
+    benc_label = f"Bencina ({km:.0f} km promedio × 2 vías × {dias} {plural_dia})"
+    mdo_label  = f"Mano de obra ({trabaj} trab. × {dias} {plural_dia} × {_fmt_precio(precio_dia)}/día)"
+
+    data = [
+        ["Concepto", "Monto"],
+        ["Materiales", _fmt_precio(s_mat) or "—"],
+        [benc_label,  _fmt_precio(s_benc) or "$0"],
+        [mdo_label,   _fmt_precio(s_mdo) or "—"],
+        ["Subtotal",  _fmt_precio(s_sub) or "—"],
+        [f"Ganancia ({ganancia_pct:.1f}%)", _fmt_precio(s_gan) or "—"],
+    ]
+
+    IDX_SUB = 4
+    estilos = [
+        ("BACKGROUND",    (0, 0),        (-1, 0),        AZUL),
+        ("TEXTCOLOR",     (0, 0),        (-1, 0),        colors.white),
+        ("FONTNAME",      (0, 0),        (-1, 0),        "Helvetica-Bold"),
+        ("FONTSIZE",      (0, 0),        (-1, -1),       10),
+        ("ALIGN",         (0, 0),        (0, -1),        "LEFT"),
+        ("ALIGN",         (1, 0),        (-1, -1),       "RIGHT"),
+        ("GRID",          (0, 0),        (-1, -1),       0.25, GRIS_CLARO),
+        ("TOPPADDING",    (0, 0),        (-1, -1),       5),
+        ("BOTTOMPADDING", (0, 0),        (-1, -1),       5),
+        ("LEFTPADDING",   (0, 0),        (-1, -1),       6),
+        ("RIGHTPADDING",  (0, 0),        (-1, -1),       6),
+        ("BACKGROUND",    (0, IDX_SUB),  (-1, IDX_SUB),  GRIS_CLARO),
+        ("FONTNAME",      (0, IDX_SUB),  (-1, IDX_SUB),  "Helvetica-Bold"),
+    ]
+    for i in range(1, len(data)):
+        if i % 2 != 0 and i != IDX_SUB:
+            estilos.append(("BACKGROUND", (0, i), (-1, i), FILA_IMPAR))
+
+    t = Table(data, colWidths=[13 * cm, 4 * cm], hAlign="LEFT")
+    t.setStyle(TableStyle(estilos))
+    return t
+
+
 def _seccion_firmas(st: dict) -> list:
     """Dos líneas de firma al final del PDF cliente."""
     t = Table(
@@ -454,7 +508,7 @@ def _seccion_firmas(st: dict) -> list:
 # ═══════════════════════════════════════════════════════════════════════════════
 # CONSTRUCTOR PDF EMPRESA
 # ═══════════════════════════════════════════════════════════════════════════════
-def _construir_empresa(proyecto, materiales: list, st: dict) -> list:
+def _construir_empresa(proyecto, materiales: list, st: dict, costos: dict = None) -> list:
     e = []
 
     # 1. Header
@@ -502,38 +556,30 @@ def _construir_empresa(proyecto, materiales: list, st: dict) -> list:
         e.append(_tabla_materiales_empresa(materiales))
     e.append(Spacer(1, 0.6 * cm))
 
-    # 7. Costo estimado (extensible)
-    e.append(Paragraph("Costo estimado", st["seccion"]))
+    # 7. Desglose de costos
+    e.append(Paragraph("Desglose de costos", st["seccion"]))
     e.append(_hr())
 
-    total_materiales = sum(
-        Decimal(str(m["precio_unitario"] or 0)) * Decimal(str(m["cantidad_planeada"] or 0))
-        for m in materiales
-    )
-
-    # Para agregar bencina, mano de obra, beneficio empresa, etc. en el futuro:
-    # agrega un dict {"label": "...", "monto": Decimal(...)} aquí.
-    conceptos_costo = [
-        {"label": "Materiales", "monto": total_materiales},
-    ]
-
-    total_general = sum(c["monto"] for c in conceptos_costo)
-
-    e.append(_tabla_conceptos(conceptos_costo))
-
-    # Margen estimado (si hay presupuesto_final)
-    if proyecto.presupuesto_final and Decimal(str(proyecto.presupuesto_final)) > 0:
-        pf = Decimal(str(proyecto.presupuesto_final))
-        if total_materiales > 0:
-            margen = ((pf - total_materiales) / pf) * 100
+    if costos:
+        e.append(_tabla_desglose_costos(costos))
+        if costos.get("materiales_sin_precio"):
+            nombres = ", ".join(costos["materiales_sin_precio"])
             e.append(Spacer(1, 0.2 * cm))
             e.append(Paragraph(
-                f"•  <b>Margen estimado:</b>  {float(margen):.1f}%", st["bullet"]
+                f"⚠  <b>Materiales sin precio registrado:</b>  {nombres}", st["bullet"]
             ))
-
-    # Caja destacada TOTAL
-    e.append(Spacer(1, 0.4 * cm))
-    e.append(_caja_total_empresa(_fmt_precio(total_general) or "$0"))
+        total_final = costos.get("total_final", 0)
+        e.append(Spacer(1, 0.4 * cm))
+        e.append(_caja_total_empresa(_fmt_precio(total_final) or "$0"))
+    else:
+        # Fallback: solo materiales
+        total_materiales = sum(
+            Decimal(str(m["precio_unitario"] or 0)) * Decimal(str(m["cantidad_planeada"] or 0))
+            for m in materiales
+        )
+        e.append(_tabla_conceptos([{"label": "Materiales", "monto": total_materiales}]))
+        e.append(Spacer(1, 0.4 * cm))
+        e.append(_caja_total_empresa(_fmt_precio(total_materiales) or "$0"))
 
     return e
 
@@ -541,7 +587,7 @@ def _construir_empresa(proyecto, materiales: list, st: dict) -> list:
 # ═══════════════════════════════════════════════════════════════════════════════
 # CONSTRUCTOR PDF CLIENTE
 # ═══════════════════════════════════════════════════════════════════════════════
-def _construir_cliente(proyecto, materiales: list, st: dict) -> list:
+def _construir_cliente(proyecto, materiales: list, st: dict, costos: dict = None) -> list:
     e = []
 
     # 1. Header
@@ -577,8 +623,11 @@ def _construir_cliente(proyecto, materiales: list, st: dict) -> list:
         e.append(_tabla_materiales_cliente(materiales))
     e.append(Spacer(1, 0.6 * cm))
 
-    # 6. Total (sobrio, sin caja azul)
-    monto_total = proyecto.presupuesto_final or proyecto.presupuesto_estimado
+    # 6. Total (sobrio, sin desglose — el cliente no ve mano de obra ni ganancia)
+    monto_total = (
+        costos.get("total_final") if costos
+        else (proyecto.presupuesto_final or proyecto.presupuesto_estimado)
+    )
     if monto_total:
         e.append(Paragraph("Total del servicio", st["seccion"]))
         e.append(_hr())
@@ -619,16 +668,24 @@ def _build_pdf(contenido: list) -> bytes:
 
 
 def generar_pdf_proyecto(proyecto_id: str, db: Session) -> bytes:
-    """PDF interno (empresa) con todos los campos, costos y margen."""
+    """PDF interno (empresa) con desglose completo de costos."""
     proyecto = obtener_proyecto(db, proyecto_id)
     materiales = obtener_materiales_planeados(db, proyecto_id)
+    try:
+        costos = calcular_costos_proyecto(proyecto_id, db)
+    except Exception:
+        costos = None
     st = _estilos()
-    return _build_pdf(_construir_empresa(proyecto, materiales, st))
+    return _build_pdf(_construir_empresa(proyecto, materiales, st, costos))
 
 
 def generar_pdf_cliente(proyecto_id: str, db: Session) -> bytes:
-    """PDF externo (cliente) sin precios unitarios ni margen."""
+    """PDF externo (cliente): sin precios unitarios, sin margen, solo TOTAL FINAL."""
     proyecto = obtener_proyecto(db, proyecto_id)
     materiales = obtener_materiales_planeados(db, proyecto_id)
+    try:
+        costos = calcular_costos_proyecto(proyecto_id, db)
+    except Exception:
+        costos = None
     st = _estilos()
-    return _build_pdf(_construir_cliente(proyecto, materiales, st))
+    return _build_pdf(_construir_cliente(proyecto, materiales, st, costos))

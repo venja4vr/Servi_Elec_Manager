@@ -88,32 +88,51 @@ def _menu_servicios(plantillas: list, categoria: str) -> Tuple[str, dict]:
     return "\n".join(lineas), mapa
 
 
-def _texto_cotizacion(nombre_servicio: str, cotizacion: dict) -> str:
+def _texto_cotizacion(nombre_servicio: str, cotizacion: dict, bencina_ref: float = None) -> str:
     total = cotizacion.get("total_estimado", 0) or 0
     sin_precio = cotizacion.get("materiales_sin_precio", [])
     materiales = cotizacion.get("materiales", [])
 
-    # Sin materiales → evaluación personalizada
     if not materiales:
         return _texto_sin_precio(nombre_servicio)
-
-    # Todos sin precio → evaluación personalizada
     if float(total) == 0 and sin_precio:
         return _texto_sin_precio(nombre_servicio)
 
-    precio_fmt = f"${float(total):,.0f}".replace(",", ".")
-    texto = (
-        f"📋 *{nombre_servicio}*\n\n"
-        f"💰 Valor aproximado: *{precio_fmt}*\n\n"
-        "_Precio referencial basado en materiales actuales._\n\n"
-    )
+    MOT_REF = 300_000  # 1 trabajador × 5 días × $60.000 (referencia)
+    mat_fmt = f"${float(total):,.0f}".replace(",", ".")
+    mot_fmt = f"${MOT_REF:,.0f}".replace(",", ".")
+    total_calc = float(total) + MOT_REF
+
+    lineas = [
+        f"📋 *Cotización aproximada — {nombre_servicio}*\n",
+        f"🔧 Materiales: *{mat_fmt}*",
+    ]
+
+    if bencina_ref is not None:
+        benc_fmt = f"${bencina_ref:,.0f}".replace(",", ".")
+        lineas.append(f"⛽ Bencina (5 días referencia): *{benc_fmt}*")
+        lineas.append("   _El costo final varía según los días reales del proyecto_")
+        total_calc += bencina_ref
+
+    lineas.append(f"👷 Servicio profesional: *{mot_fmt}*")
+
+    total_fmt = f"${total_calc:,.0f}".replace(",", ".")
+    lineas += [
+        "\n────────────────────",
+        f"💰 *TOTAL estimado: {total_fmt}*",
+        "",
+        "⚠️ _Este es un estimado inicial. El precio final se ajusta tras la visita._",
+    ]
+
     if sin_precio:
         nombres = ", ".join(sin_precio)
-        texto += (
-            f"⚠️ Algunos materiales no tienen precio actualizado: {nombres}.\n"
-            "Un administrador te dará la cotización completa al revisar tu solicitud.\n\n"
+        lineas.append(
+            f"\n⚠️ Materiales sin precio actualizado: {nombres}.\n"
+            "Un administrador completará la cotización al revisar tu solicitud."
         )
-    texto += "Si desea continuar escribe *OK*.\nPara volver al menú escribe *menú*."
+
+    texto = "\n".join(lineas)
+    texto += "\n\nSi desea continuar escribe *OK*.\nPara volver al menú escribe *menú*."
     return texto
 
 
@@ -267,7 +286,8 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
         sesion.precio_estimado = float(total) if float(total) > 0 else None
         sesion.estado = EstadoChat.COTIZACION_ENVIADA
         sesion_service.guardar_sesion(sesion)
-        return _texto_cotizacion(sesion.nombre_servicio, cotizacion)
+        bencina_ref = gestion_client.obtener_bencina_referencia(dias=5)
+        return _texto_cotizacion(sesion.nombre_servicio, cotizacion, bencina_ref)
 
     # ── Cliente confirma con OK ──────────────────────────────
     if estado == EstadoChat.COTIZACION_ENVIADA:

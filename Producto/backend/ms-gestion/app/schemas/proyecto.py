@@ -177,4 +177,10 @@ class ProyectoCreateConMateriales(BaseModel):
     fecha_termino_maximo: Optional[date] = None
     plantilla_id: Optional[str] = None
     observaciones: Optional[str] = None
+    # Campos de costos (el bot envía comuna_grupo_id desde la sesión)
+    dias_estimados: Optional[int] = Field(default=None, ge=1)
+    cantidad_trabajadores: Optional[int] = Field(default=None, ge=1)
+    comuna_grupo_id: Optional[str] = None
+    porcentaje_ganancia: Optional[Decimal] = Field(default=None, ge=0)
+    precio_dia_trabajador: Optional[Decimal] = Field(default=None, ge=0)
     materiales: List[dict]  # [{"material_id": "...", "cantidad_planeada": 5}, ...]

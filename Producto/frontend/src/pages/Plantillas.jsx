@@ -54,6 +54,7 @@ function Plantillas() {
     const [fDescripcion, setFDescripcion] = useState("");
     const [fCategoria, setFCategoria] = useState("");
     const [fActiva, setFActiva] = useState(true);
+    const [fDiasDefault, setFDiasDefault] = useState("");
     const [fErrores, setFErrores] = useState({});
 
     // Materiales en el modal
@@ -107,7 +108,7 @@ function Plantillas() {
     const abrirCrear = () => {
         setModoEdicion(false);
         setPlantillaId(null);
-        setFNombre(""); setFDescripcion(""); setFCategoria(""); setFActiva(true);
+        setFNombre(""); setFDescripcion(""); setFCategoria(""); setFActiva(true); setFDiasDefault("");
         setFErrores({});
         setMaterialesModal([]);
         setBusquedaMat("");
@@ -122,6 +123,7 @@ function Plantillas() {
         setFDescripcion(plantilla.descripcion || "");
         setFCategoria(plantilla.categoria || "");
         setFActiva(plantilla.activa !== false);
+        setFDiasDefault(plantilla.dias_default != null ? String(plantilla.dias_default) : "");
         setFErrores({});
         setBusquedaMat("");
         setMostrarModal(true);
@@ -175,6 +177,7 @@ function Plantillas() {
             descripcion: fDescripcion.trim() || null,
             categoria: fCategoria,
             activa: fActiva,
+            dias_default: fDiasDefault ? parseInt(fDiasDefault) : null,
             materiales: materialesModal.map((m) => ({
                 material_id: m.material_id,
                 cantidad_sugerida: parseFloat(m.cantidad_sugerida),
@@ -364,6 +367,11 @@ function Plantillas() {
                                         <span>
                                             <strong style={{ color: "#4d5b43" }}>{p.num_materiales ?? 0}</strong> material{(p.num_materiales ?? 0) !== 1 ? "es" : ""}
                                         </span>
+                                        {p.dias_default != null && (
+                                            <span>
+                                                <strong style={{ color: "#4d5b43" }}>{p.dias_default}</strong> día{p.dias_default !== 1 ? "s" : ""} est.
+                                            </span>
+                                        )}
                                         {p.precio_estimado != null && (
                                             <span>
                                                 Precio estimado:{" "}
@@ -501,6 +509,23 @@ function Plantillas() {
                                 <label htmlFor="chk-activa" style={{ fontWeight: "700", color: "#1f2418", cursor: "pointer" }}>
                                     Plantilla activa (visible para el bot)
                                 </label>
+                            </div>
+
+                            {/* Campo Días estimados */}
+                            <div style={{ marginBottom: "16px" }}>
+                                <label style={estiloLabel}>Días estimados de trabajo</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    step="1"
+                                    placeholder="Ej: 2"
+                                    style={estiloInput}
+                                    value={fDiasDefault}
+                                    onChange={(e) => setFDiasDefault(e.target.value)}
+                                />
+                                <p style={{ color: "#6b7280", fontSize: "0.8rem", margin: "4px 0 0" }}>
+                                    Duración típica del servicio (opcional, referencia para costos)
+                                </p>
                             </div>
 
                             {/* Sección Materiales */}

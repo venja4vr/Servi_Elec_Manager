@@ -352,3 +352,26 @@ export async function rechazarUsuario(usuarioId) {
         method: "DELETE",
     });
 }
+
+// =============== COSTOS DE PROYECTO ===============
+
+export async function getComunaGrupos() {
+    return fetchAPI("/comuna-grupos/");
+}
+
+export async function getCostosProyecto(proyectoId) {
+    return fetchAPI(`/proyectos/${proyectoId}/costos`);
+}
+
+export async function actualizarCostosProyecto(proyectoId, data) {
+    return fetchAPI(`/proyectos/${proyectoId}/costos`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+    });
+}
+
+export async function recalcularCostosProyecto(proyectoId) {
+    return fetchAPI(`/proyectos/${proyectoId}/recalcular-costos`, {
+        method: "POST",
+    });
+}
