@@ -55,6 +55,8 @@ function Plantillas() {
     const [fCategoria, setFCategoria] = useState("");
     const [fActiva, setFActiva] = useState(true);
     const [fDiasDefault, setFDiasDefault] = useState("");
+    const [fHorasDiarias, setFHorasDiarias] = useState("8");
+    const [fTrabajadoresDefault, setFTrabajadoresDefault] = useState("1");
     const [fErrores, setFErrores] = useState({});
 
     // Materiales en el modal
@@ -109,6 +111,7 @@ function Plantillas() {
         setModoEdicion(false);
         setPlantillaId(null);
         setFNombre(""); setFDescripcion(""); setFCategoria(""); setFActiva(true); setFDiasDefault("");
+        setFHorasDiarias("8"); setFTrabajadoresDefault("1");
         setFErrores({});
         setMaterialesModal([]);
         setBusquedaMat("");
@@ -124,6 +127,8 @@ function Plantillas() {
         setFCategoria(plantilla.categoria || "");
         setFActiva(plantilla.activa !== false);
         setFDiasDefault(plantilla.dias_default != null ? String(plantilla.dias_default) : "");
+        setFHorasDiarias(plantilla.horas_diarias_default != null ? String(plantilla.horas_diarias_default) : "8");
+        setFTrabajadoresDefault(plantilla.trabajadores_default != null ? String(plantilla.trabajadores_default) : "1");
         setFErrores({});
         setBusquedaMat("");
         setMostrarModal(true);
@@ -178,6 +183,8 @@ function Plantillas() {
             categoria: fCategoria,
             activa: fActiva,
             dias_default: fDiasDefault ? parseInt(fDiasDefault) : null,
+            horas_diarias_default: fHorasDiarias ? parseInt(fHorasDiarias) : 8,
+            trabajadores_default: fTrabajadoresDefault ? parseInt(fTrabajadoresDefault) : 1,
             materiales: materialesModal.map((m) => ({
                 material_id: m.material_id,
                 cantidad_sugerida: parseFloat(m.cantidad_sugerida),
@@ -372,6 +379,10 @@ function Plantillas() {
                                                 <strong style={{ color: "#4d5b43" }}>{p.dias_default}</strong> día{p.dias_default !== 1 ? "s" : ""} est.
                                             </span>
                                         )}
+                                        <span>
+                                            <strong style={{ color: "#4d5b43" }}>{p.horas_diarias_default ?? 8}</strong>h/día,{" "}
+                                            <strong style={{ color: "#4d5b43" }}>{p.trabajadores_default ?? 1}</strong> trabajador{(p.trabajadores_default ?? 1) !== 1 ? "es" : ""}
+                                        </span>
                                         {p.precio_estimado != null && (
                                             <span>
                                                 Precio estimado:{" "}
@@ -526,6 +537,39 @@ function Plantillas() {
                                 <p style={{ color: "#6b7280", fontSize: "0.8rem", margin: "4px 0 0" }}>
                                     Duración típica del servicio (opcional, referencia para costos)
                                 </p>
+                            </div>
+
+                            {/* Campos de recursos */}
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "20px" }}>
+                                <div>
+                                    <label style={estiloLabel}>Horas diarias de trabajo</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="12"
+                                        step="1"
+                                        placeholder="8"
+                                        style={estiloInput}
+                                        value={fHorasDiarias}
+                                        onChange={(e) => setFHorasDiarias(e.target.value)}
+                                    />
+                                    <p style={{ color: "#6b7280", fontSize: "0.8rem", margin: "4px 0 0" }}>
+                                        1–12 h/día
+                                    </p>
+                                </div>
+                                <div>
+                                    <label style={estiloLabel}>Trabajadores necesarios</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max="10"
+                                        step="1"
+                                        placeholder="1"
+                                        style={estiloInput}
+                                        value={fTrabajadoresDefault}
+                                        onChange={(e) => setFTrabajadoresDefault(e.target.value)}
+                                    />
+                                </div>
                             </div>
 
                             {/* Sección Materiales */}

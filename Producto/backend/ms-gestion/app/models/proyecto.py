@@ -25,6 +25,7 @@ class Proyecto(Base):
     # Campos de costos (Sprint Precios)
     dias_estimados         = Column(Integer, nullable=True, default=1)
     cantidad_trabajadores  = Column(Integer, nullable=True, default=1)
+    horas_diarias          = Column(Integer, nullable=True, default=8)
     comuna_grupo_id        = Column(String(32), ForeignKey("comuna_grupo.id_cg"), nullable=True)
     porcentaje_ganancia    = Column(Numeric(5, 2), nullable=True, default=15.00)
     precio_dia_trabajador  = Column(Numeric(10, 2), nullable=True, default=60000.00)

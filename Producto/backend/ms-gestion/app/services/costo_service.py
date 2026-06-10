@@ -79,9 +79,12 @@ def calcular_costos_proyecto(proyecto_id: str, db: Session) -> dict:
 
     # ── 3. Costo mano de obra ─────────────────────────────────────────────────
     precio_dia = Decimal(str(proyecto.precio_dia_trabajador or 60000))
+    horas_diarias = proyecto.horas_diarias or 8
     trabajadores = proyecto.cantidad_trabajadores or 1
     dias_est = proyecto.dias_estimados or 1
-    costo_mano_obra = precio_dia * Decimal(str(trabajadores)) * Decimal(str(dias_est))
+    # Prorrateo por hora: precio_dia ÷ 8 horas de jornada base
+    precio_hora = precio_dia / Decimal("8")
+    costo_mano_obra = precio_hora * Decimal(str(horas_diarias)) * Decimal(str(dias_est)) * Decimal(str(trabajadores))
 
     # ── 4. Totales ────────────────────────────────────────────────────────────
     subtotal_sin_ganancia = subtotal_materiales + costo_bencina + costo_mano_obra
@@ -102,7 +105,10 @@ def calcular_costos_proyecto(proyecto_id: str, db: Session) -> dict:
             "km_distancia": km_distancia,
             "dias_estimados": dias_est,
             "cantidad_trabajadores": trabajadores,
+            "horas_diarias": horas_diarias,
             "precio_dia_trabajador": float(precio_dia),
+            "precio_hora_calculado": float(precio_hora),
+            "horas_totales": horas_diarias * dias_est,
             "porcentaje_ganancia": float(porcentaje),
             "comuna_grupo_id": proyecto.comuna_grupo_id,
         },

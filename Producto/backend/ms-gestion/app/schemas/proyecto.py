@@ -25,6 +25,7 @@ class ProyectoCreate(BaseModel):
     # Campos de costos (opcionales para compatibilidad)
     dias_estimados: Optional[int] = Field(default=None, ge=1)
     cantidad_trabajadores: Optional[int] = Field(default=None, ge=1)
+    horas_diarias: Optional[int] = Field(default=None, ge=1, le=12)
     comuna_grupo_id: Optional[str] = None
     porcentaje_ganancia: Optional[Decimal] = Field(default=None, ge=0)
     precio_dia_trabajador: Optional[Decimal] = Field(default=None, ge=0)
@@ -46,6 +47,7 @@ class ProyectoUpdate(BaseModel):
     # Campos de costos (opcionales para compatibilidad)
     dias_estimados: Optional[int] = Field(default=None, ge=1)
     cantidad_trabajadores: Optional[int] = Field(default=None, ge=1)
+    horas_diarias: Optional[int] = Field(default=None, ge=1, le=12)
     comuna_grupo_id: Optional[str] = None
     porcentaje_ganancia: Optional[Decimal] = Field(default=None, ge=0)
     precio_dia_trabajador: Optional[Decimal] = Field(default=None, ge=0)
@@ -123,6 +125,7 @@ class ProyectoOut(BaseModel):
     # Campos de costos
     dias_estimados: Optional[int] = None
     cantidad_trabajadores: Optional[int] = None
+    horas_diarias: Optional[int] = None
     comuna_grupo_id: Optional[str] = None
     porcentaje_ganancia: Optional[Decimal] = None
     precio_dia_trabajador: Optional[Decimal] = None
@@ -139,6 +142,7 @@ class ProyectoCostosUpdate(BaseModel):
     """Body para PUT /proyectos/{id}/costos — todos los campos son opcionales."""
     dias_estimados: Optional[int] = Field(default=None, ge=1)
     cantidad_trabajadores: Optional[int] = Field(default=None, ge=1)
+    horas_diarias: Optional[int] = Field(default=None, ge=1, le=12)
     comuna_grupo_id: Optional[str] = None
     porcentaje_ganancia: Optional[Decimal] = Field(default=None, ge=0, le=100)
     precio_dia_trabajador: Optional[Decimal] = Field(default=None, ge=0)
@@ -148,7 +152,10 @@ class DetallesCostosOut(BaseModel):
     km_distancia: float
     dias_estimados: int
     cantidad_trabajadores: int
+    horas_diarias: int
     precio_dia_trabajador: float
+    precio_hora_calculado: float
+    horas_totales: int
     porcentaje_ganancia: float
     comuna_grupo_id: Optional[str]
 
@@ -180,6 +187,7 @@ class ProyectoCreateConMateriales(BaseModel):
     # Campos de costos (el bot envía comuna_grupo_id desde la sesión)
     dias_estimados: Optional[int] = Field(default=None, ge=1)
     cantidad_trabajadores: Optional[int] = Field(default=None, ge=1)
+    horas_diarias: Optional[int] = Field(default=None, ge=1, le=12)
     comuna_grupo_id: Optional[str] = None
     porcentaje_ganancia: Optional[Decimal] = Field(default=None, ge=0)
     precio_dia_trabajador: Optional[Decimal] = Field(default=None, ge=0)

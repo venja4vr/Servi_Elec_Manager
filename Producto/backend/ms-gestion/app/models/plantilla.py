@@ -12,8 +12,10 @@ class Plantilla(Base):
     materiales_sugeridos = Column(Text, nullable=True)
     precio_estimado      = Column(Numeric(9, 2), nullable=True)
     categoria            = Column(String(40), nullable=True)
-    activa               = Column(Boolean, nullable=False, default=True, server_default="true")
-    dias_default         = Column(Integer, nullable=True, default=1)
+    activa                = Column(Boolean, nullable=False, default=True, server_default="true")
+    dias_default          = Column(Integer, nullable=True, default=1)
+    horas_diarias_default = Column(Integer, nullable=True, default=8)
+    trabajadores_default  = Column(Integer, nullable=True, default=1)
 
     @property
     def num_materiales(self) -> int:
