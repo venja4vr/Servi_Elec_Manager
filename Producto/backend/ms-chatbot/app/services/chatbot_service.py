@@ -20,6 +20,10 @@ PALABRAS_VOLVER = {
     "corregir", "error", "equivoque", "equivoqué", "me equivoque",
 }
 
+# Respuestas para la pregunta de precio
+PALABRAS_PRECIO_CARO = {"si", "sí", "claro", "mucho", "caro", "demasiado"}
+PALABRAS_PRECIO_OK   = {"no", "esta bien", "está bien", "ok", "perfecto", "dale"}
+
 
 # Las 38 comunas de la Quinta Región válidas
 COMUNAS_QUINTA_REGION = {
@@ -128,9 +132,26 @@ def _texto_cotizacion(nombre_servicio: str, cotizacion: dict, bencina_ref: float
             "Un administrador completará la cotización al revisar tu solicitud."
         )
 
-    texto = "\n".join(lineas)
-    texto += "\n\nSi desea continuar escribe *OK*.\nPara volver al menú escribe *menú*."
-    return texto
+    return "\n".join(lineas)
+
+
+def _pregunta_precio_caro() -> str:
+    return (
+        "¿Considera que el precio es caro?\n\n"
+        "Responda *sí* o *no* para continuar."
+    )
+
+
+def _texto_empatico() -> str:
+    return (
+        "Entendemos su preocupación. Algunos precios pueden parecer altos por estas razones:\n\n"
+        "- Los materiales se cotizan en tiempo real desde Sodimac y a veces incluyen productos premium.\n"
+        "- El precio incluye servicio profesional, traslado del técnico y materiales de calidad.\n"
+        "- Es una estimación inicial: el precio FINAL se ajusta tras la visita técnica, "
+        "considerando el alcance real del trabajo.\n"
+        "- Si lo desea, podemos cotizar con materiales más económicos o ajustar el alcance.\n\n"
+        "¿Desea continuar con la cotización? Responda *sí* para seguir o *menú* para cancelar."
+    )
 
 
 def _texto_sin_precio(nombre_servicio: str) -> str:
@@ -305,18 +326,66 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
         # Obtener cotizacion calculada con precios Sodimac actuales
         cotizacion = gestion_client.obtener_cotizacion_plantilla(sesion.plantilla_id)
         if cotizacion is None:
-            # ms-gestion caído: mostrar sin precio pero continuar el flujo
             sesion.precio_estimado = None
             sesion.estado = EstadoChat.COTIZACION_ENVIADA
             sesion_service.guardar_sesion(sesion)
             return _texto_sin_precio(sesion.nombre_servicio)
 
-        total = cotizacion.get("total_estimado", 0) or 0
+        total      = cotizacion.get("total_estimado", 0) or 0
+        materiales = cotizacion.get("materiales", [])
+        sin_precio = cotizacion.get("materiales_sin_precio", [])
+
+        # Sin datos de precio → flujo sin cotización
+        if not materiales or (float(total) == 0 and sin_precio):
+            sesion.precio_estimado = None
+            sesion.estado = EstadoChat.COTIZACION_ENVIADA
+            sesion_service.guardar_sesion(sesion)
+            return _texto_sin_precio(sesion.nombre_servicio)
+
+        # Con precio → flujo de feedback
         sesion.precio_estimado = float(total) if float(total) > 0 else None
-        sesion.estado = EstadoChat.COTIZACION_ENVIADA
-        sesion_service.guardar_sesion(sesion)
         bencina_ref = gestion_client.obtener_bencina_referencia(dias=5)
-        return _texto_cotizacion(sesion.nombre_servicio, cotizacion, bencina_ref)
+        texto_cot = _texto_cotizacion(sesion.nombre_servicio, cotizacion, bencina_ref)
+        sesion.cotizacion_texto = texto_cot
+        sesion.estado = EstadoChat.PRECIO_FEEDBACK
+        sesion_service.guardar_sesion(sesion)
+        return texto_cot + "\n\n" + _pregunta_precio_caro()
+
+    # ── Feedback de precio (¿le parece caro?) ───────────────
+    if estado == EstadoChat.PRECIO_FEEDBACK:
+        if texto_limpio in PALABRAS_VOLVER:
+            texto_cot = sesion.cotizacion_texto or ""
+            return texto_cot + "\n\n" + _pregunta_precio_caro()
+
+        if texto_limpio in PALABRAS_PRECIO_CARO:
+            sesion.estado = EstadoChat.PRECIO_FEEDBACK_EMPATICO
+            sesion_service.guardar_sesion(sesion)
+            return _texto_empatico()
+
+        if texto_limpio in PALABRAS_PRECIO_OK:
+            sesion.estado = EstadoChat.RECOPILANDO_DATOS
+            sesion.paso_recopilacion = 0
+            sesion_service.guardar_sesion(sesion)
+            _, pregunta = PREGUNTAS_FICHA[0]
+            return f"¡Perfecto! Necesito algunos datos.\n\n{pregunta}"
+
+        return _pregunta_precio_caro()
+
+    # ── Tras explicación empática: sí → continuar ────────────
+    if estado == EstadoChat.PRECIO_FEEDBACK_EMPATICO:
+        if texto_limpio in PALABRAS_VOLVER:
+            sesion.estado = EstadoChat.PRECIO_FEEDBACK
+            sesion_service.guardar_sesion(sesion)
+            return _pregunta_precio_caro()
+
+        if texto_limpio in ("si", "sí"):
+            sesion.estado = EstadoChat.RECOPILANDO_DATOS
+            sesion.paso_recopilacion = 0
+            sesion_service.guardar_sesion(sesion)
+            _, pregunta = PREGUNTAS_FICHA[0]
+            return f"¡Perfecto! Necesito algunos datos.\n\n{pregunta}"
+
+        return "Responda *sí* para continuar o *menú* para cancelar."
 
     # ── Cliente confirma con OK ──────────────────────────────
     if estado == EstadoChat.COTIZACION_ENVIADA:

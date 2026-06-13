@@ -18,19 +18,27 @@ export async function fetchAPI(endpoint, options = {}) {
     });
 
     if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: "Error desconocido" }));
-    const detail = error.detail;
+        if (response.status === 401 && endpoint !== "/auth/login") {
+            localStorage.removeItem("token");
+            localStorage.removeItem("usuario_nombre");
+            localStorage.removeItem("usuario_rol");
+            localStorage.removeItem("usuario_id");
+            window.location.href = "/login?expired=1";
+            return;
+        }
 
-    // Si el detail es un objeto estructurado, le adjuntamos sus campos al Error
-    if (typeof detail === "object" && detail !== null) {
-        const err = new Error(detail.mensaje || detail.resumen || "Error en la operación");
-        err.faltantes = detail.faltantes;
-        err.detalleCompleto = detail;
-        throw err;
+        const error = await response.json().catch(() => ({ detail: "Error desconocido" }));
+        const detail = error.detail;
+
+        if (typeof detail === "object" && detail !== null) {
+            const err = new Error(detail.mensaje || detail.resumen || "Error en la operación");
+            err.faltantes = detail.faltantes;
+            err.detalleCompleto = detail;
+            throw err;
+        }
+
+        throw new Error(detail || `Error ${response.status}`);
     }
-
-    throw new Error(detail || `Error ${response.status}`);
-}
 
     return response.json();
 }

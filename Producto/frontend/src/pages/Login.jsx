@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import AuthLayout from "../components/AuthLayout";
 import { login } from "../services/api";
 
@@ -7,6 +7,9 @@ const REGEX_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function Login() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const sesionExpirada = searchParams.get("expired") === "1";
+
     const [correo, setCorreo] = useState("");
     const [password, setPassword] = useState("");
 
@@ -65,6 +68,12 @@ function Login() {
             <div className="auth-card">
                 <h2>Iniciar sesión</h2>
                 <p className="auth-subtitle">Ingresa tus credenciales para continuar</p>
+
+                {sesionExpirada && (
+                    <div className="alert alert-warning" role="alert">
+                        Tu cuenta fue eliminada o tu sesión expiró. Inicia sesión nuevamente.
+                    </div>
+                )}
 
                 {error && (
                     <div className={`alert alert-${tipoError}`} role="alert">
