@@ -145,11 +145,13 @@ def _pregunta_precio_caro() -> str:
 def _texto_empatico() -> str:
     return (
         "Entendemos su preocupación. Algunos precios pueden parecer altos por estas razones:\n\n"
-        "- Los materiales se cotizan en tiempo real desde Sodimac y a veces incluyen productos premium.\n"
-        "- El precio incluye servicio profesional, traslado del técnico y materiales de calidad.\n"
-        "- Es una estimación inicial: el precio FINAL se ajusta tras la visita técnica, "
-        "considerando el alcance real del trabajo.\n"
-        "- Si lo desea, podemos cotizar con materiales más económicos o ajustar el alcance.\n\n"
+        "- Los materiales se cotizan en tiempo real y a veces incluyen productos premium.\n\n"
+        "- El precio incluye servicio profesional, traslado del técnico y materiales de calidad.\n\n"
+        "- Es una estimación inicial: el precio FINAL se ajusta tras una llamada y posterior visita técnica, "
+        "considerando el alcance real del trabajo para que el monto final sea justo para ambas partes.\n\n"
+        "- No se asuste si una mantención o instalación tiene un precio que parece irreal. "
+        "Continúe respondiendo las preguntas y espere la comunicación de la empresa. "
+        "Al ponernos en contacto, podremos manejar correctamente los montos para llegar a un acuerdo apropiado.\n\n"
         "¿Desea continuar con la cotización? Responda *sí* para seguir o *menú* para cancelar."
     )
 
