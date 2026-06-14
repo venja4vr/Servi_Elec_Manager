@@ -86,6 +86,25 @@ def crear_proyecto(db: Session, data: ProyectoCreate):
     db.add(p)
     db.commit()
     db.refresh(p)
+
+    try:
+        from app.models.usuario import Usuario
+        from app.services.notificacion_service import crear_notificacion
+        from app.schemas.notificacion import NotificacionCreate
+        admins = db.query(Usuario).filter(Usuario.rol.in_(["S", "A"]), Usuario.estado == "aprobado").all()
+        for admin in admins:
+            crear_notificacion(db, NotificacionCreate(
+                usuario_id=admin.id_usuario,
+                tipo="nueva_cotizacion",
+                titulo="Nueva cotizacion recibida",
+                mensaje=f"{p.nombre_cliente} solicito '{p.nombre_proyecto}'.",
+            ))
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
     return p
 
 

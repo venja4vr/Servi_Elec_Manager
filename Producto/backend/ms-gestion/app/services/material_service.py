@@ -44,4 +44,25 @@ def ajustar_stock(db: Session, material_id: str, cantidad: int):
     mat.stock_actual = nuevo_stock
     db.commit()
     db.refresh(mat)
+
+    if nuevo_stock <= mat.stock_critico:
+        try:
+            from app.models.usuario import Usuario
+            from app.services.notificacion_service import crear_notificacion
+            from app.schemas.notificacion import NotificacionCreate
+            admins = db.query(Usuario).filter(Usuario.rol.in_(["S", "A"]), Usuario.estado == "aprobado").all()
+            nivel = "sin stock" if nuevo_stock == 0 else "bajo"
+            for admin in admins:
+                crear_notificacion(db, NotificacionCreate(
+                    usuario_id=admin.id_usuario,
+                    tipo="stock_critico",
+                    titulo=f"Stock {nivel}: {mat.nombre_material}",
+                    mensaje=f"Stock actual: {nuevo_stock} | Critico: {mat.stock_critico}",
+                ))
+        except Exception:
+            try:
+                db.rollback()
+            except Exception:
+                pass
+
     return mat

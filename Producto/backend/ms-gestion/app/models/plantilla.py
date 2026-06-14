@@ -1,4 +1,5 @@
 from sqlalchemy import Column, String, Text, Numeric, Boolean, Integer
+from sqlalchemy.orm import relationship
 from app.db.database import Base
 import uuid
 
@@ -18,6 +19,12 @@ class Plantilla(Base):
     trabajadores_default  = Column(Integer, nullable=True, default=1)
     dias_minimos          = Column(Integer, nullable=True, default=1)
     horas_minimas         = Column(Integer, nullable=True, default=1)
+
+    materiales_vinculados = relationship(
+        "PlantillaMaterial",
+        back_populates="plantilla",
+        cascade="all, delete-orphan",
+    )
 
     @property
     def num_materiales(self) -> int:

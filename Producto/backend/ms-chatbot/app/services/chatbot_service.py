@@ -12,7 +12,7 @@ CATEGORIAS = {
 
 
 # Palabras que reinician la conversación desde cualquier estado
-PALABRAS_REINICIO = {"menu", "menú", "inicio", "cancelar", "salir"}
+PALABRAS_REINICIO = {"menu", "menú", "inicio", "cancelar", "salir", "home", "exit", "fin"}
 
 # Palabras para retroceder una pregunta (solo en RECOPILANDO_DATOS)
 PALABRAS_VOLVER = {
@@ -371,7 +371,12 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
             sesion.paso_recopilacion = 0
             sesion_service.guardar_sesion(sesion)
             _, pregunta = PREGUNTAS_FICHA[0]
-            return f"¡Perfecto! Necesito algunos datos.\n\n{pregunta}"
+            return (
+                f"¡Perfecto! Necesito algunos datos.\n\n{pregunta}\n\n"
+                "---\n"
+                "Escribe *volver* para la pregunta anterior\n"
+                "Escribe *menú* para cancelar y volver al inicio"
+            )
 
         return _pregunta_precio_caro()
 
@@ -387,7 +392,12 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
             sesion.paso_recopilacion = 0
             sesion_service.guardar_sesion(sesion)
             _, pregunta = PREGUNTAS_FICHA[0]
-            return f"¡Perfecto! Necesito algunos datos.\n\n{pregunta}"
+            return (
+                f"¡Perfecto! Necesito algunos datos.\n\n{pregunta}\n\n"
+                "---\n"
+                "Escribe *volver* para la pregunta anterior\n"
+                "Escribe *menú* para cancelar y volver al inicio"
+            )
 
         return "Responda *sí* para continuar o *menú* para cancelar."
 
@@ -397,10 +407,15 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
             return "Para continuar escribe *OK*.\nPara volver escribe *menú*."
 
         sesion.estado = EstadoChat.RECOPILANDO_DATOS
-        sesion.paso_recopilacion = 0 # Empezar desde la primera pregunta
+        sesion.paso_recopilacion = 0
         sesion_service.guardar_sesion(sesion)
-        _, pregunta = PREGUNTAS_FICHA[0] # Primera pregunta: nombre
-        return f"¡Perfecto! Necesito algunos datos.\n\n{pregunta}"
+        _, pregunta = PREGUNTAS_FICHA[0]
+        return (
+            f"¡Perfecto! Necesito algunos datos.\n\n{pregunta}\n\n"
+            "---\n"
+            "Escribe *volver* para la pregunta anterior\n"
+            "Escribe *menú* para cancelar y volver al inicio"
+        )
 
 # ── Recopilación de datos de la ficha ────────────────────
     if estado == EstadoChat.RECOPILANDO_DATOS:
@@ -411,11 +426,13 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
             texto_lower = texto.strip().lower()
             if texto_lower not in COMUNAS_QUINTA_REGION:
                 return (
-                    "⚠️ Esa comuna no pertenece a la Quinta Región.\n\n"
+                    "Esa comuna no pertenece a la Quinta Región.\n\n"
                     "Por favor escribe una comuna válida, por ejemplo:\n"
                     "Valparaíso, Viña del Mar, Quilpué, Villa Alemana, "
                     "San Antonio, Quillota, Los Andes, San Felipe...\n\n"
-                    "_Escribe *volver* para corregir la dirección o *menú* para cancelar._"
+                    "---\n"
+                    "Escribe *volver* para la pregunta anterior\n"
+                    "Escribe *menú* para cancelar y volver al inicio"
                 )
             # Guardar con la primera letra en mayúscula
             setattr(sesion, campo, texto.strip().title())
@@ -431,13 +448,17 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
             except (ValueError, TypeError):
                 return (
                     "Por favor escribe un número entre 1 y 30.\n\n"
-                    "_Escribe *volver* para la pregunta anterior o *menú* para cancelar._"
+                    "---\n"
+                    "Escribe *volver* para la pregunta anterior\n"
+                    "Escribe *menú* para cancelar y volver al inicio"
                 )
             if dias_val < dias_min:
                 return (
                     f"Este servicio requiere mínimo *{dias_min} día{'s' if dias_min != 1 else ''}*.\n\n"
                     f"Por favor escribe un número igual o mayor a {dias_min}.\n\n"
-                    "_Escribe *volver* para la pregunta anterior o *menú* para cancelar._"
+                    "---\n"
+                    "Escribe *volver* para la pregunta anterior\n"
+                    "Escribe *menú* para cancelar y volver al inicio"
                 )
             setattr(sesion, campo, dias_val)
         elif campo == "horas_diarias":
@@ -449,13 +470,17 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
             except (ValueError, TypeError):
                 return (
                     "Por favor escribe un número entre 1 y 12.\n\n"
-                    "_Escribe *volver* para la pregunta anterior o *menú* para cancelar._"
+                    "---\n"
+                    "Escribe *volver* para la pregunta anterior\n"
+                    "Escribe *menú* para cancelar y volver al inicio"
                 )
             if horas_val < horas_min:
                 return (
                     f"Este servicio requiere mínimo *{horas_min} hora{'s' if horas_min != 1 else ''} diarias*.\n\n"
                     f"Por favor escribe un número igual o mayor a {horas_min}.\n\n"
-                    "_Escribe *volver* para la pregunta anterior o *menú* para cancelar._"
+                    "---\n"
+                    "Escribe *volver* para la pregunta anterior\n"
+                    "Escribe *menú* para cancelar y volver al inicio"
                 )
             setattr(sesion, campo, horas_val)
         else:
@@ -466,7 +491,12 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
         if sesion.paso_recopilacion < len(PREGUNTAS_FICHA):
             _, siguiente = PREGUNTAS_FICHA[sesion.paso_recopilacion]
             sesion_service.guardar_sesion(sesion)
-            return f"{siguiente}\n\n_Escribe *volver* si te equivocaste o *menú* para empezar de nuevo._"
+            return (
+                f"{siguiente}\n\n"
+                "---\n"
+                "Escribe *volver* para la pregunta anterior\n"
+                "Escribe *menú* para cancelar y volver al inicio"
+            )
 
         sesion_service.guardar_sesion(sesion)
         return _crear_proyecto(sesion)

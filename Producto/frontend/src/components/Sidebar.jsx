@@ -1,8 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { getUsuariosPendientes, getUsuarioRol } from "../services/api";
+import {
+    getUsuariosPendientes,
+    getUsuarioRol,
+    getUsuarioNombre,
+    contadorNoLeidas,
+} from "../services/api";
 
 const CARRITO_KEY = "recursos_pendientes_carrito";
+
+const ROL_LABEL = { S: "SuperAdmin", A: "Administrador", T: "Técnico" };
 
 function Sidebar() {
     const navigate = useNavigate();
@@ -11,19 +18,20 @@ function Sidebar() {
 
     const [cantidadRecursos, setCantidadRecursos] = useState(0);
     const [cantidadPendientes, setCantidadPendientes] = useState(0);
+    const [cantidadNotificaciones, setCantidadNotificaciones] = useState(0);
+
     const rol = getUsuarioRol();
+    const nombre = getUsuarioNombre();
     const esSuperAdmin = rol === "S";
     const esAdmin = rol === "A" || rol === "S";
 
+    // Carrito de recursos (1.5s)
     useEffect(() => {
         actualizarContador();
-
         const handler = () => actualizarContador();
         window.addEventListener("storage", handler);
         window.addEventListener("focus", handler);
-
         const intervalo = setInterval(actualizarContador, 1500);
-
         return () => {
             window.removeEventListener("storage", handler);
             window.removeEventListener("focus", handler);
@@ -31,13 +39,20 @@ function Sidebar() {
         };
     }, []);
 
+    // Solicitudes pendientes para SuperAdmin (10s)
     useEffect(() => {
         if (!esSuperAdmin) return;
-
         cargarPendientes();
         const intervalo = setInterval(cargarPendientes, 10000);
         return () => clearInterval(intervalo);
     }, [esSuperAdmin]);
+
+    // Contador de notificaciones no leídas (30s exactos)
+    useEffect(() => {
+        cargarContadorNotificaciones();
+        const intervalo = setInterval(cargarContadorNotificaciones, 30000);
+        return () => clearInterval(intervalo);
+    }, []);
 
     const actualizarContador = () => {
         const raw = localStorage.getItem(CARRITO_KEY);
@@ -49,8 +64,17 @@ function Sidebar() {
         try {
             const pendientes = await getUsuariosPendientes();
             setCantidadPendientes(pendientes.length);
-        } catch (err) {
-            console.error("Error al cargar pendientes:", err);
+        } catch {
+            // silencioso
+        }
+    };
+
+    const cargarContadorNotificaciones = async () => {
+        try {
+            const data = await contadorNoLeidas();
+            setCantidadNotificaciones(data.total ?? 0);
+        } catch {
+            // silencioso hasta que el backend esté disponible
         }
     };
 
@@ -72,12 +96,46 @@ function Sidebar() {
                 </div>
             </div>
 
+            <div className="sidebar-user">
+                <span className="sidebar-user-nombre">{nombre}</span>
+                <span className="sidebar-user-rol">{ROL_LABEL[rol] ?? rol}</span>
+            </div>
+
             <nav className="sidebar-nav">
                 <button
                     className={`sidebar-item ${isActive("/home") ? "active" : ""}`}
                     onClick={() => navigate("/home")}
                 >
                     Home
+                </button>
+
+                <button
+                    className={`sidebar-item ${isActive("/notificaciones") ? "active" : ""}`}
+                    onClick={() => navigate("/notificaciones")}
+                >
+                    <span>Notificaciones</span>
+                    {cantidadNotificaciones > 0 && (
+                        <span className="sidebar-badge warning">{cantidadNotificaciones}</span>
+                    )}
+                </button>
+
+                {esSuperAdmin && (
+                    <button
+                        className={`sidebar-item ${isActive("/solicitudes") ? "active" : ""}`}
+                        onClick={() => navigate("/solicitudes")}
+                    >
+                        <span>Solicitudes</span>
+                        {cantidadPendientes > 0 && (
+                            <span className="sidebar-badge danger">{cantidadPendientes}</span>
+                        )}
+                    </button>
+                )}
+
+                <button
+                    className={`sidebar-item ${isActive("/inventario") ? "active" : ""}`}
+                    onClick={() => navigate("/inventario")}
+                >
+                    Inventario
                 </button>
 
                 <button
@@ -104,31 +162,12 @@ function Sidebar() {
                     Proyectos
                 </button>
 
-                <button
-                    className={`sidebar-item ${isActive("/inventario") ? "active" : ""}`}
-                    onClick={() => navigate("/inventario")}
-                >
-                    Inventario
-                </button>
-
                 {esAdmin && (
                     <button
                         className={`sidebar-item ${isActive("/plantillas") ? "active" : ""}`}
                         onClick={() => navigate("/plantillas")}
                     >
                         Plantillas
-                    </button>
-                )}
-
-                {esSuperAdmin && (
-                    <button
-                        className={`sidebar-item ${isActive("/solicitudes") ? "active" : ""}`}
-                        onClick={() => navigate("/solicitudes")}
-                    >
-                        <span>Solicitudes</span>
-                        {cantidadPendientes > 0 && (
-                            <span className="sidebar-badge danger">{cantidadPendientes}</span>
-                        )}
                     </button>
                 )}
             </nav>

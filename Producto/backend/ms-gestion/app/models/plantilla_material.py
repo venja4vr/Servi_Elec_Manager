@@ -11,5 +11,5 @@ class PlantillaMaterial(Base):
     cantidad_sugerida = Column(Numeric(9, 2), nullable=False)
     unidad            = Column(String(15), nullable=False)
 
-    plantilla = relationship("Plantilla", backref="materiales_vinculados")
+    plantilla = relationship("Plantilla", back_populates="materiales_vinculados")
     material  = relationship("Material", backref="plantillas_vinculadas")

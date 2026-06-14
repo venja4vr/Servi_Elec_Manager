@@ -1,5 +1,6 @@
 from decimal import Decimal
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException
 from app.models.plantilla import Plantilla
 from app.models.plantilla_material import PlantillaMaterial
@@ -81,8 +82,20 @@ def actualizar_plantilla(db: Session, plantilla_id: str, data: PlantillaUpdate):
 
 def eliminar_plantilla(db: Session, plantilla_id: str):
     p = obtener_plantilla(db, plantilla_id)
-    db.delete(p)
-    db.commit()
+    try:
+        db.delete(p)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        from app.models.proyecto import Proyecto
+        count = db.query(Proyecto).filter(Proyecto.plantilla_id == plantilla_id).count()
+        raise HTTPException(
+            status_code=409,
+            detail=f"No se puede eliminar: hay {count} proyecto{'s' if count != 1 else ''} asociado{'s' if count != 1 else ''} a esta plantilla. Reasigna o elimina esos proyectos primero.",
+        )
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error al eliminar plantilla: {str(e)}")
     return {"mensaje": "Plantilla eliminada"}
 
 

@@ -394,3 +394,21 @@ export async function recalcularCostosProyecto(proyectoId) {
         method: "POST",
     });
 }
+
+// =============== NOTIFICACIONES ===============
+
+export async function getNotificaciones(soloNoLeidas = false) {
+    return fetchAPI(`/notificaciones/?solo_no_leidas=${soloNoLeidas}`);
+}
+
+export async function contadorNoLeidas() {
+    return fetchAPI("/notificaciones/contador");
+}
+
+export async function marcarLeida(notificacionId) {
+    return fetchAPI(`/notificaciones/${notificacionId}/leida`, { method: "PATCH" });
+}
+
+export async function marcarTodasLeidas() {
+    return fetchAPI("/notificaciones/marcar-todas-leidas", { method: "PATCH" });
+}

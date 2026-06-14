@@ -12,6 +12,7 @@ import ProtectedRoute from "./ProtectedRoute";
 import NuevoProyecto from "../pages/NuevoProyecto";
 import Solicitudes from "../pages/Solicitudes";
 import Plantillas from "../pages/Plantillas";
+import Notificaciones from "../pages/Notificaciones";
 
 function AppRoutes() {
     return (
@@ -100,6 +101,14 @@ function AppRoutes() {
                     element={
                         <ProtectedRoute>
                             <Plantillas />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/notificaciones"
+                    element={
+                        <ProtectedRoute>
+                            <Notificaciones />
                         </ProtectedRoute>
                     }
                 />

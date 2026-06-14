@@ -18,6 +18,24 @@ def crear_usuario(db: Session, data: UsuarioCreate):
     db.add(usuario)
     db.commit()
     db.refresh(usuario)
+
+    try:
+        from app.services.notificacion_service import crear_notificacion
+        from app.schemas.notificacion import NotificacionCreate
+        superadmins = db.query(Usuario).filter(Usuario.rol == "S").all()
+        for sa in superadmins:
+            crear_notificacion(db, NotificacionCreate(
+                usuario_id=sa.id_usuario,
+                tipo="nueva_solicitud_usuario",
+                titulo="Nueva solicitud de cuenta",
+                mensaje=f"{data.nombre_usuario} solicita acceso al sistema.",
+            ))
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
     return usuario
 
 

@@ -227,7 +227,7 @@ function Inventario() {
                         <span>Código</span>
                         <span>Nombre</span>
                         <span>Precio</span>
-                        <span>Precio Sodimac</span>
+                        <span>Precio referencia</span>
                         <span>Categoría</span>
                         <span>Stock</span>
                         <span>Acciones</span>
@@ -273,7 +273,7 @@ function Inventario() {
                                     <strong>{formatearPrecio(material.precio_unitario)}</strong>
                                 </div>
 
-                                {/* Col 5 — Precio Sodimac (solo lectura) */}
+                                {/* Col 5 — Precio referencia (solo lectura) */}
                                 <div style={{ fontSize: "0.82rem" }}>
                                     {material.precio_sodimac_actual != null ? (
                                         <>
