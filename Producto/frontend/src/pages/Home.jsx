@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import AppLayout from "../components/AppLayout";
-import { getUsuarioNombre, getProyectos, getMateriales } from "../services/api";
+import { getUsuarioNombre, getProyectos, getMateriales, getAlertasProyectos } from "../services/api";
 import GuiaRapida from "../components/GuiaRapida";
 
 const COLORES_ESTADO = {
@@ -26,6 +26,7 @@ function Home() {
     const [statsInventario, setStatsInventario] = useState({ total: 0, criticos: 0 });
     const [proyectosRecientes, setProyectosRecientes] = useState([]);
     const [alertas, setAlertas] = useState([]);
+    const [alertasProyectos, setAlertasProyectos] = useState([]);
     const [datosGrafico, setDatosGrafico] = useState([]);
     const [cargando, setCargando] = useState(true);
 
@@ -36,10 +37,12 @@ function Home() {
 
     const cargarDatos = async () => {
         try {
-            const [proyectos, materiales] = await Promise.all([
+            const [proyectos, materiales, alertasFecha] = await Promise.all([
                 getProyectos(),
                 getMateriales(),
+                getAlertasProyectos(3).catch(() => []),
             ]);
+            setAlertasProyectos(alertasFecha);
 
             // Stats proyectos
             const activos = proyectos.filter(
@@ -357,6 +360,57 @@ function Home() {
                                 </div>
                             </div>
                         ))
+                    )}
+                </div>
+
+                {/* ── Widget proyectos próximos ─────────────────────────── */}
+                <div className="dashboard-card notifications-card">
+                    <div className="card-title-row">
+                        <h2>Proyectos próximos</h2>
+                        <button onClick={() => navigate("/proyectos")}>Ver todos</button>
+                    </div>
+
+                    {cargando ? (
+                        <p>Cargando...</p>
+                    ) : alertasProyectos.length === 0 ? (
+                        <div className="notification-item info">
+                            <div className="notification-icon">i</div>
+                            <div>
+                                <strong>Sin proyectos próximos</strong>
+                                <span>Ningún proyecto con fecha crítica en los próximos 3 días</span>
+                            </div>
+                        </div>
+                    ) : (
+                        alertasProyectos.map((a) => {
+                            const cfg = a.tipo_alerta === "atrasado"
+                                ? { clase: "danger", icono: "!", etiqueta: "Atrasado" }
+                                : a.tipo_alerta === "finalizar_pronto"
+                                ? { clase: "warning", icono: "⌛", etiqueta: "Finalizar pronto" }
+                                : { clase: "warning", icono: "⌛", etiqueta: "Iniciar pronto" };
+
+                            const diasTexto = a.dias_restantes < 0
+                                ? `Hace ${Math.abs(a.dias_restantes)} día${Math.abs(a.dias_restantes) !== 1 ? "s" : ""}`
+                                : a.dias_restantes === 0
+                                ? "Hoy"
+                                : `En ${a.dias_restantes} día${a.dias_restantes !== 1 ? "s" : ""}`;
+
+                            return (
+                                <div
+                                    key={a.id_proyecto}
+                                    className={`notification-item ${cfg.clase}`}
+                                    style={{ cursor: "pointer" }}
+                                    onClick={() => navigate(`/proyectos/${a.id_proyecto}`)}
+                                >
+                                    <div className="notification-icon">{cfg.icono}</div>
+                                    <div>
+                                        <strong>{cfg.etiqueta}: {a.nombre_proyecto}</strong>
+                                        <span>
+                                            {a.nombre_cliente} · {diasTexto}
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        })
                     )}
                 </div>
             </section>

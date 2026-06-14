@@ -5,9 +5,12 @@ import {
     getPlantillas,
     getMaterialesDePlantilla,
     getMateriales,
+    getCategorias,
     crearPlantilla,
     actualizarPlantilla,
     eliminarPlantilla,
+    buscarPrecios,
+    crearMaterialDesdeScraper,
     getUsuarioRol,
 } from "../services/api";
 
@@ -65,10 +68,22 @@ function Plantillas() {
     const [materialesModal, setMaterialesModal] = useState([]);
     // [{ material_id, nombre_material, cantidad_sugerida, unidad }]
 
-    // Autocomplete de material
+    // Autocomplete de material (modo inventario)
     const [busquedaMat, setBusquedaMat] = useState("");
     const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
     const autocompleteRef = useRef(null);
+
+    // Mini-buscador de tienda (modo scraper)
+    const [modoMaterial, setModoMaterial] = useState("inventario"); // "inventario" | "tienda"
+    const [queryTienda, setQueryTienda] = useState("");
+    const [filtroTienda, setFiltroTienda] = useState("");
+    const [resultadosTienda, setResultadosTienda] = useState([]);
+    const [cargandoTienda, setCargandoTienda] = useState(false);
+    const [errTienda, setErrTienda] = useState("");
+    const [productoScraper, setProductoScraper] = useState(null); // producto a convertir
+    const [categoriasScraper, setCategoriasScraper] = useState([]);
+    const [categoriaIdScraper, setCategoriaIdScraper] = useState("");
+    const [creandoScraper, setCreandoScraper] = useState(false);
 
     // ── Eliminar ─────────────────────────────────────────────────
     const [mostrarEliminar, setMostrarEliminar] = useState(false);
@@ -76,6 +91,7 @@ function Plantillas() {
 
     useEffect(() => {
         cargarDatos();
+        getCategorias().then(setCategoriasScraper).catch(() => {});
         // Cerrar autocomplete al hacer click fuera
         const handler = (e) => {
             if (autocompleteRef.current && !autocompleteRef.current.contains(e.target)) {
@@ -108,6 +124,12 @@ function Plantillas() {
         setTimeout(() => setMensajeOk(""), 3500);
     };
 
+    const resetearModoBusqueda = () => {
+        setModoMaterial("inventario");
+        setQueryTienda(""); setFiltroTienda(""); setResultadosTienda([]);
+        setErrTienda(""); setProductoScraper(null); setCategoriaIdScraper("");
+    };
+
     // ── Abrir modal crear ─────────────────────────────────────────
     const abrirCrear = () => {
         setModoEdicion(false);
@@ -117,6 +139,7 @@ function Plantillas() {
         setFErrores({});
         setMaterialesModal([]);
         setBusquedaMat("");
+        resetearModoBusqueda();
         setMostrarModal(true);
     };
 
@@ -135,6 +158,7 @@ function Plantillas() {
         setFHorasMinimas(plantilla.horas_minimas != null ? String(plantilla.horas_minimas) : "1");
         setFErrores({});
         setBusquedaMat("");
+        resetearModoBusqueda();
         setMostrarModal(true);
 
         // Cargar materiales actuales
@@ -255,6 +279,59 @@ function Plantillas() {
 
     const quitarMaterial = (idx) => {
         setMaterialesModal((prev) => prev.filter((_, i) => i !== idx));
+    };
+
+    // ── Búsqueda en tienda (scraper) ──────────────────────────────
+    const handleBuscarEnTienda = async (e) => {
+        e.preventDefault();
+        if (!queryTienda.trim()) return;
+        setCargandoTienda(true);
+        setErrTienda("");
+        setResultadosTienda([]);
+        setProductoScraper(null);
+        try {
+            const data = await buscarPrecios(queryTienda.trim(), filtroTienda);
+            setResultadosTienda(data.slice(0, 12));
+            if (data.length === 0) setErrTienda("Sin resultados. Prueba con otro término.");
+        } catch {
+            setErrTienda("Error al conectar con el comparador.");
+        } finally {
+            setCargandoTienda(false);
+        }
+    };
+
+    const handleUsarProductoScraper = async () => {
+        if (!productoScraper || !categoriaIdScraper) return;
+        setCreandoScraper(true);
+        setErrTienda("");
+        try {
+            const nuevo = await crearMaterialDesdeScraper({
+                nombre_material: productoScraper.nombre.substring(0, 50),
+                precio: productoScraper.precio || 0,
+                tienda: productoScraper.tienda,
+                categoria_id: categoriaIdScraper,
+            });
+            setMaterialesModal((prev) => [
+                ...prev,
+                {
+                    material_id: nuevo.id_material,
+                    nombre_material: nuevo.nombre_material,
+                    cantidad_sugerida: "1",
+                    unidad: "unidad",
+                },
+            ]);
+            setProductoScraper(null);
+            setCategoriaIdScraper("");
+            setResultadosTienda([]);
+            setQueryTienda("");
+            setModoMaterial("inventario");
+            const mats = await getMateriales();
+            setMaterialesInventario(mats);
+        } catch (err) {
+            setErrTienda(err.message || "Error al crear el material.");
+        } finally {
+            setCreandoScraper(false);
+        }
     };
 
     const actualizarCampomaterial = (idx, campo, valor) => {
@@ -631,9 +708,38 @@ function Plantillas() {
                                     marginBottom: "24px",
                                 }}
                             >
-                                <label style={{ ...estiloLabel, marginBottom: "12px" }}>Materiales del inventario</label>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                                    <label style={estiloLabel}>Materiales</label>
+                                    <div style={{ display: "flex", gap: "6px" }}>
+                                        <button
+                                            type="button"
+                                            style={{
+                                                padding: "5px 12px", borderRadius: "999px", border: "none",
+                                                fontWeight: "800", fontSize: "0.78rem", cursor: "pointer",
+                                                background: modoMaterial === "inventario" ? "#4d5b43" : "#f5f1e8",
+                                                color: modoMaterial === "inventario" ? "#fff" : "#4d5b43",
+                                            }}
+                                            onClick={() => setModoMaterial("inventario")}
+                                        >
+                                            Del inventario
+                                        </button>
+                                        <button
+                                            type="button"
+                                            style={{
+                                                padding: "5px 12px", borderRadius: "999px", border: "none",
+                                                fontWeight: "800", fontSize: "0.78rem", cursor: "pointer",
+                                                background: modoMaterial === "tienda" ? "#4d5b43" : "#f5f1e8",
+                                                color: modoMaterial === "tienda" ? "#fff" : "#4d5b43",
+                                            }}
+                                            onClick={() => { setModoMaterial("tienda"); setProductoScraper(null); }}
+                                        >
+                                            Buscar en tienda
+                                        </button>
+                                    </div>
+                                </div>
 
-                                {/* Autocomplete */}
+                                {/* ── Modo inventario: Autocomplete ── */}
+                                {modoMaterial === "inventario" && (
                                 <div ref={autocompleteRef} style={{ position: "relative", marginBottom: "12px" }}>
                                     <input
                                         type="text"
@@ -684,6 +790,124 @@ function Plantillas() {
                                         </div>
                                     )}
                                 </div>
+                                )}
+
+                                {/* ── Modo tienda: mini-buscador scraper ── */}
+                                {modoMaterial === "tienda" && (
+                                <div style={{ marginBottom: "12px" }}>
+                                    <form onSubmit={handleBuscarEnTienda} style={{ display: "flex", gap: "6px", marginBottom: "10px" }}>
+                                        <input
+                                            type="text"
+                                            placeholder="Ej: cable thhn 2.5mm"
+                                            style={{ ...estiloInput, flex: 1 }}
+                                            value={queryTienda}
+                                            onChange={(e) => setQueryTienda(e.target.value)}
+                                        />
+                                        <select
+                                            style={{ ...estiloInput, width: "120px", flexShrink: 0 }}
+                                            value={filtroTienda}
+                                            onChange={(e) => setFiltroTienda(e.target.value)}
+                                        >
+                                            <option value="">Todas</option>
+                                            <option value="Sodimac">Sodimac</option>
+                                            <option value="Easy">Easy</option>
+                                        </select>
+                                        <button
+                                            type="submit"
+                                            disabled={cargandoTienda}
+                                            style={{
+                                                background: "#4d5b43", color: "#fff", border: "none",
+                                                borderRadius: "12px", padding: "0 16px", fontWeight: "800",
+                                                cursor: cargandoTienda ? "not-allowed" : "pointer",
+                                                whiteSpace: "nowrap", flexShrink: 0,
+                                            }}
+                                        >
+                                            {cargandoTienda ? "..." : "Buscar"}
+                                        </button>
+                                    </form>
+
+                                    {errTienda && <p style={estiloError}>{errTienda}</p>}
+
+                                    {/* Resultados */}
+                                    {resultadosTienda.length > 0 && (
+                                        <div style={{ maxHeight: "240px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "6px" }}>
+                                            {resultadosTienda.map((prod, i) => (
+                                                <div
+                                                    key={i}
+                                                    style={{
+                                                        display: "flex", justifyContent: "space-between", alignItems: "center",
+                                                        background: productoScraper === prod ? "#e5efe2" : "#f5f1e8",
+                                                        border: productoScraper === prod ? "1.5px solid #4d5b43" : "1px solid #e6dfd2",
+                                                        borderRadius: "10px", padding: "8px 12px", gap: "8px",
+                                                    }}
+                                                >
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ fontWeight: "700", fontSize: "0.82rem", color: "#1f2418", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                                            {prod.nombre}
+                                                        </div>
+                                                        <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>
+                                                            {prod.precio ? formatearPrecio(prod.precio) : "Sin precio"} ·{" "}
+                                                            <span style={{
+                                                                fontWeight: "800",
+                                                                color: prod.tienda === "Sodimac" ? "#a66a00" : "#2f7d46",
+                                                            }}>
+                                                                {prod.tienda}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        style={{
+                                                            background: productoScraper === prod ? "#4d5b43" : "#e5efe2",
+                                                            color: productoScraper === prod ? "#fff" : "#2e321b",
+                                                            border: "none", borderRadius: "8px", padding: "5px 12px",
+                                                            fontSize: "0.78rem", fontWeight: "800", cursor: "pointer", flexShrink: 0,
+                                                        }}
+                                                        onClick={() => { setProductoScraper(productoScraper === prod ? null : prod); setCategoriaIdScraper(""); }}
+                                                    >
+                                                        {productoScraper === prod ? "Cancelar" : "Usar"}
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Panel de categoría para el producto seleccionado */}
+                                    {productoScraper && (
+                                        <div style={{
+                                            marginTop: "10px", background: "#fffdf8",
+                                            border: "1px solid #4d5b43", borderRadius: "12px", padding: "12px 14px",
+                                        }}>
+                                            <p style={{ fontWeight: "800", fontSize: "0.85rem", color: "#1f2418", margin: "0 0 8px" }}>
+                                                Asignar categoría para crear el material:
+                                            </p>
+                                            <select
+                                                style={{ ...estiloInput, marginBottom: "10px" }}
+                                                value={categoriaIdScraper}
+                                                onChange={(e) => setCategoriaIdScraper(e.target.value)}
+                                            >
+                                                <option value="">Seleccionar categoría...</option>
+                                                {categoriasScraper.map((c) => (
+                                                    <option key={c.id_categoria} value={c.id_categoria}>{c.nombre_categoria}</option>
+                                                ))}
+                                            </select>
+                                            <button
+                                                type="button"
+                                                disabled={!categoriaIdScraper || creandoScraper}
+                                                style={{
+                                                    background: !categoriaIdScraper || creandoScraper ? "#9ca3af" : "#4d5b43",
+                                                    color: "#fff", border: "none", borderRadius: "10px",
+                                                    padding: "9px 18px", fontWeight: "800", fontSize: "0.85rem",
+                                                    cursor: !categoriaIdScraper || creandoScraper ? "not-allowed" : "pointer",
+                                                }}
+                                                onClick={handleUsarProductoScraper}
+                                            >
+                                                {creandoScraper ? "Creando material..." : "Crear material y agregar a plantilla"}
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                                )}
 
                                 {/* Lista de materiales agregados */}
                                 {fErrores.materiales && <p style={estiloError}>{fErrores.materiales}</p>}

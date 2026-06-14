@@ -1,0 +1,4 @@
+BEGIN;
+ALTER TABLE material_precio_historico
+  ADD COLUMN IF NOT EXISTS es_outlier BOOLEAN NOT NULL DEFAULT FALSE;
+COMMIT;

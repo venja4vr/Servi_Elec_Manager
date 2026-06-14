@@ -1,4 +1,5 @@
 import logging
+import statistics
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -8,13 +9,52 @@ from app.services.scraper_sodimac import buscar_en_sodimac
 
 logger = logging.getLogger(__name__)
 
+# Umbral de outlier: si el nuevo precio es más de FACTOR veces la mediana
+# o menos de 1/FACTOR, se considera atípico.
+OUTLIER_FACTOR = 3.0
 
-def _insertar_historico(material_id: str, precio: float, fuente: str, db: Session, tienda: str = "Sodimac") -> None:
+
+def _calcular_mediana_historico(material_id: str, db: Session) -> float | None:
+    """Devuelve la mediana de los últimos 5 registros no-outlier del material.
+    Retorna None si hay menos de 2 registros confiables."""
+    ultimos = (
+        db.query(MaterialPrecioHistorico)
+        .filter(
+            MaterialPrecioHistorico.material_id == material_id,
+            MaterialPrecioHistorico.es_outlier == False,  # noqa: E712
+        )
+        .order_by(MaterialPrecioHistorico.fecha.desc())
+        .limit(5)
+        .all()
+    )
+    precios = [float(r.precio) for r in ultimos if float(r.precio) > 0]
+    if len(precios) < 2:
+        return None
+    return statistics.median(precios)
+
+
+def _es_outlier_vs_mediana(nuevo_precio: float, mediana: float | None) -> bool:
+    """True si nuevo_precio está fuera del rango [mediana/FACTOR, mediana*FACTOR]."""
+    if mediana is None or mediana == 0:
+        return False
+    ratio = nuevo_precio / mediana
+    return ratio > OUTLIER_FACTOR or ratio < (1.0 / OUTLIER_FACTOR)
+
+
+def _insertar_historico(
+    material_id: str,
+    precio: float,
+    fuente: str,
+    db: Session,
+    tienda: str = "Sodimac",
+    es_outlier: bool = False,
+) -> None:
     registro = MaterialPrecioHistorico(
         material_id=material_id,
         precio=round(precio, 2),
         fuente=fuente,
         tienda=tienda,
+        es_outlier=es_outlier,
     )
     db.add(registro)
     # TODO (PASO 7): para actualizar precios Easy de forma automática, llamar
@@ -23,8 +63,9 @@ def _insertar_historico(material_id: str, precio: float, fuente: str, db: Sessio
 
 def actualizar_precio_material(material_id: str, db: Session) -> bool:
     """Busca el material en Sodimac y guarda el promedio de los 3 primeros precios.
-    También inserta un registro en el histórico con fuente='sodimac'.
-    Devuelve True si se actualizó, False si el scraper falló o no hubo resultados."""
+    Si el promedio es un outlier vs el histórico reciente, guarda el registro como
+    outlier y NO actualiza precio_sodimac_actual (protege contra precios erróneos).
+    Devuelve True si el scraper obtuvo datos, False si falló o no hubo resultados."""
     material = db.query(Material).filter(Material.id_material == material_id).first()
     if not material:
         return False
@@ -48,9 +89,20 @@ def actualizar_precio_material(material_id: str, db: Session) -> bool:
         return False
 
     promedio = sum(precios_validos) / len(precios_validos)
-    material.precio_sodimac_actual = round(promedio, 2)
-    material.precio_sodimac_actualizado = datetime.now(timezone.utc)
-    _insertar_historico(material_id, promedio, "sodimac", db)
+
+    mediana = _calcular_mediana_historico(material_id, db)
+    outlier = _es_outlier_vs_mediana(promedio, mediana)
+
+    if outlier:
+        logger.warning(
+            f"[precio_service] Precio outlier para '{material.nombre_material}': "
+            f"nuevo={promedio:.0f}, mediana_hist={mediana:.0f} — se guarda en histórico pero NO actualiza precio actual."
+        )
+    else:
+        material.precio_sodimac_actual = round(promedio, 2)
+        material.precio_sodimac_actualizado = datetime.now(timezone.utc)
+
+    _insertar_historico(material_id, promedio, "sodimac", db, es_outlier=outlier)
     db.commit()
     return True
 

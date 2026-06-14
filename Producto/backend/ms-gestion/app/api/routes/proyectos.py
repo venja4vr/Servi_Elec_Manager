@@ -8,6 +8,7 @@ from app.schemas.proyecto import (
     ProyectoCreate,
     ProyectoUpdate,
     ProyectoOut,
+    ProyectoAlertaOut,
     ProyectoCreateConMateriales,
     ProyectoCostosUpdate,
     ProyectoCostosOut,
@@ -29,6 +30,17 @@ def listar(
     _=Depends(get_current_user)
 ):
     return proyecto_controller.get_all(db, estado)
+
+
+@router.get("/alertas", response_model=List[ProyectoAlertaOut])
+def alertas_fecha(
+    dias: int = Query(3, ge=1, le=30, description="Ventana en días para alertas"),
+    db: Session = Depends(get_db),
+    _=Depends(get_current_user),
+):
+    """Proyectos con alertas de fecha: pendientes próximos a iniciar, en_curso próximos a vencer, y atrasados."""
+    from app.services.proyecto_service import listar_alertas_fecha
+    return listar_alertas_fecha(db, dias)
 
 
 @router.get("/{proyecto_id}", response_model=ProyectoOut)

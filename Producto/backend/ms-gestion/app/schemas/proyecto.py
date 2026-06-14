@@ -136,6 +136,21 @@ class ProyectoOut(BaseModel):
         from_attributes = True
 
 
+# ── Alertas de fechas ─────────────────────────────────────────────────────────
+
+class ProyectoAlertaOut(BaseModel):
+    id_proyecto: str
+    nombre_proyecto: str
+    nombre_cliente: str
+    estado: str
+    fecha_relevante: Optional[date]
+    dias_restantes: int
+    tipo_alerta: str  # "iniciar_pronto" | "finalizar_pronto" | "atrasado"
+
+    class Config:
+        from_attributes = True
+
+
 # ── Costos ───────────────────────────────────────────────────────────────────
 
 class ProyectoCostosUpdate(BaseModel):

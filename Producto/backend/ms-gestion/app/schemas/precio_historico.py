@@ -9,6 +9,7 @@ class PrecioHistoricoOut(BaseModel):
     precio: Decimal
     fuente: str
     tienda: Optional[str] = "Sodimac"
+    es_outlier: bool = False
     fecha: datetime
 
     class Config:

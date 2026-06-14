@@ -510,81 +510,122 @@ function Buscador() {
                                                 <p style={{ color: "#6b7280", fontSize: "0.88rem" }}>
                                                     Sin registros históricos aún. Registra un precio manualmente o actualiza desde el inventario.
                                                 </p>
-                                            ) : (
-                                                <>
-                                                    {/* Gráfico */}
-                                                    <div
-                                                        style={{
-                                                            background: "#fffdf8",
-                                                            border: "1px solid #e6dfd2",
-                                                            borderRadius: "14px",
-                                                            padding: "14px 16px",
-                                                            marginBottom: "14px",
-                                                        }}
-                                                    >
-                                                        <GraficoHistorico datos={historicos[materialMatch.id_material]} />
-                                                    </div>
+                                            ) : (() => {
+                                                const todosRegistros = historicos[materialMatch.id_material];
+                                                const registrosConfiables = todosRegistros.filter((r) => !r.es_outlier);
+                                                const sinDatosConfiables = registrosConfiables.length === 0;
 
-                                                    {/* Tabla */}
-                                                    <div style={{ overflowX: "auto" }}>
-                                                        <table
-                                                            style={{
+                                                return (
+                                                    <>
+                                                        {/* Aviso sin datos confiables */}
+                                                        {sinDatosConfiables && (
+                                                            <div style={{
+                                                                background: "#fff7ed",
+                                                                border: "1px solid #fed7aa",
+                                                                borderRadius: "10px",
+                                                                padding: "10px 14px",
+                                                                marginBottom: "12px",
+                                                                display: "flex",
+                                                                alignItems: "center",
+                                                                gap: "8px",
+                                                                fontSize: "0.85rem",
+                                                                color: "#9a3412",
+                                                                fontWeight: "700",
+                                                            }}>
+                                                                ⚠ Sin datos confiables — todos los registros automáticos fueron marcados como atípicos. Ingresa un precio manual para restablecer el histórico.
+                                                            </div>
+                                                        )}
+
+                                                        {/* Gráfico solo con datos confiables */}
+                                                        {!sinDatosConfiables && (
+                                                            <div style={{
+                                                                background: "#fffdf8",
+                                                                border: "1px solid #e6dfd2",
+                                                                borderRadius: "14px",
+                                                                padding: "14px 16px",
+                                                                marginBottom: "14px",
+                                                            }}>
+                                                                <GraficoHistorico datos={registrosConfiables} />
+                                                            </div>
+                                                        )}
+
+                                                        {/* Tabla con todos los registros */}
+                                                        <div style={{ overflowX: "auto" }}>
+                                                            <table style={{
                                                                 width: "100%",
                                                                 borderCollapse: "collapse",
                                                                 fontSize: "0.85rem",
                                                                 background: "#fffdf8",
                                                                 borderRadius: "12px",
                                                                 overflow: "hidden",
-                                                            }}
-                                                        >
-                                                            <thead>
-                                                                <tr style={{ background: "#eef3e7", color: "#4d5b43" }}>
-                                                                    <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: "900" }}>Fecha</th>
-                                                                    <th style={{ padding: "10px 14px", textAlign: "right", fontWeight: "900" }}>Precio</th>
-                                                                    <th style={{ padding: "10px 14px", textAlign: "center", fontWeight: "900" }}>Fuente</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                {historicos[materialMatch.id_material].map((r, idx) => (
-                                                                    <tr
-                                                                        key={idx}
-                                                                        style={{ borderBottom: "1px solid #eee4d5" }}
-                                                                    >
-                                                                        <td style={{ padding: "9px 14px", color: "#374151" }}>
-                                                                            {formatearFecha(r.fecha)}
-                                                                        </td>
-                                                                        <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: "800", color: "#1f2418" }}>
-                                                                            {formatearPrecio(r.precio)}
-                                                                        </td>
-                                                                        <td style={{ padding: "9px 14px", textAlign: "center" }}>
-                                                                            {(() => {
-                                                                                const f = r.fuente?.toLowerCase();
-                                                                                const cfg = f === "sodimac"
-                                                                                    ? { bg: "#fff1cc", fg: "#a66a00", label: "Sodimac" }
-                                                                                    : f === "easy"
-                                                                                    ? { bg: "#e5efe2", fg: "#2f7d46", label: "Easy" }
-                                                                                    : { bg: "#f0f0f0", fg: "#555555", label: "Manual" };
-                                                                                return (
-                                                                                    <span style={{
-                                                                                        padding: "3px 10px",
-                                                                                        borderRadius: "999px",
-                                                                                        fontSize: "0.75rem",
-                                                                                        fontWeight: "800",
-                                                                                        background: cfg.bg,
-                                                                                        color: cfg.fg,
-                                                                                    }}>
-                                                                                        {cfg.label}
-                                                                                    </span>
-                                                                                );
-                                                                            })()}
-                                                                        </td>
+                                                            }}>
+                                                                <thead>
+                                                                    <tr style={{ background: "#eef3e7", color: "#4d5b43" }}>
+                                                                        <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: "900" }}>Fecha</th>
+                                                                        <th style={{ padding: "10px 14px", textAlign: "right", fontWeight: "900" }}>Precio</th>
+                                                                        <th style={{ padding: "10px 14px", textAlign: "center", fontWeight: "900" }}>Fuente</th>
                                                                     </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </>
-                                            )}
+                                                                </thead>
+                                                                <tbody>
+                                                                    {todosRegistros.map((r, idx) => (
+                                                                        <tr
+                                                                            key={idx}
+                                                                            style={{
+                                                                                borderBottom: "1px solid #eee4d5",
+                                                                                opacity: r.es_outlier ? 0.5 : 1,
+                                                                            }}
+                                                                        >
+                                                                            <td style={{ padding: "9px 14px", color: "#374151" }}>
+                                                                                {formatearFecha(r.fecha)}
+                                                                            </td>
+                                                                            <td style={{ padding: "9px 14px", textAlign: "right", fontWeight: "800", color: "#1f2418" }}>
+                                                                                <span style={r.es_outlier ? { textDecoration: "line-through", color: "#9ca3af" } : {}}>
+                                                                                    {formatearPrecio(r.precio)}
+                                                                                </span>
+                                                                                {r.es_outlier && (
+                                                                                    <span style={{
+                                                                                        marginLeft: "6px",
+                                                                                        fontSize: "0.7rem",
+                                                                                        background: "#fee2e2",
+                                                                                        color: "#991b1b",
+                                                                                        borderRadius: "999px",
+                                                                                        padding: "1px 6px",
+                                                                                        fontWeight: "800",
+                                                                                    }}>
+                                                                                        atípico
+                                                                                    </span>
+                                                                                )}
+                                                                            </td>
+                                                                            <td style={{ padding: "9px 14px", textAlign: "center" }}>
+                                                                                {(() => {
+                                                                                    const f = r.fuente?.toLowerCase();
+                                                                                    const cfg = f === "sodimac"
+                                                                                        ? { bg: "#fff1cc", fg: "#a66a00", label: "Sodimac" }
+                                                                                        : f === "easy"
+                                                                                        ? { bg: "#e5efe2", fg: "#2f7d46", label: "Easy" }
+                                                                                        : { bg: "#f0f0f0", fg: "#555555", label: "Manual" };
+                                                                                    return (
+                                                                                        <span style={{
+                                                                                            padding: "3px 10px",
+                                                                                            borderRadius: "999px",
+                                                                                            fontSize: "0.75rem",
+                                                                                            fontWeight: "800",
+                                                                                            background: cfg.bg,
+                                                                                            color: cfg.fg,
+                                                                                        }}>
+                                                                                            {cfg.label}
+                                                                                        </span>
+                                                                                    );
+                                                                                })()}
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </>
+                                                );
+                                            })()}
 
                                             {/* Input precio manual (admin) */}
                                             {esAdmin && (

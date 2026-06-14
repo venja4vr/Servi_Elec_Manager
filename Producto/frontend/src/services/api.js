@@ -95,6 +95,10 @@ export async function getProyectos(estado = "") {
     return fetchAPI(endpoint);
 }
 
+export async function getAlertasProyectos(dias = 3) {
+    return fetchAPI(`/proyectos/alertas?dias=${dias}`);
+}
+
 export async function getProyecto(id) {
     return fetchAPI(`/proyectos/${id}`);
 }
@@ -127,6 +131,13 @@ export async function eliminarProyecto(id) {
 
 export async function getCategorias() {
     return fetchAPI("/categorias/");
+}
+
+export async function crearMaterialDesdeScraper(data) {
+    return fetchAPI("/materiales/crear-desde-scraper", {
+        method: "POST",
+        body: JSON.stringify(data),
+    });
 }
 
 export async function getMateriales() {

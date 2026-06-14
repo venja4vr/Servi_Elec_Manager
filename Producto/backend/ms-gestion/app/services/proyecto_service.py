@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, date, timezone
 import uuid
 
 from app.models.proyecto import Proyecto
@@ -9,6 +9,61 @@ from app.models.proyecto_material import ProyectoMaterial
 from app.models.material import Material
 from app.models.movimiento import Movimiento
 from app.schemas.proyecto import ProyectoCreate, ProyectoUpdate, ProyectoCreateConMateriales
+
+
+def listar_alertas_fecha(db: Session, dias_umbral: int = 3) -> list[dict]:
+    """Devuelve proyectos con alertas de fecha (pendientes próximos, en_curso por vencer, atrasados).
+    dias_umbral: ventana en días para considerar "pronto"."""
+    hoy = date.today()
+    alertas = []
+
+    proyectos = (
+        db.query(Proyecto)
+        .filter(Proyecto.estado.in_(["pendiente", "en_curso"]))
+        .all()
+    )
+
+    for p in proyectos:
+        if p.estado == "pendiente" and p.fecha_inicio:
+            diff = (p.fecha_inicio - hoy).days
+            if diff < 0:
+                alertas.append({
+                    "id_proyecto": p.id_proyecto,
+                    "nombre_proyecto": p.nombre_proyecto,
+                    "nombre_cliente": p.nombre_cliente,
+                    "estado": p.estado,
+                    "fecha_relevante": p.fecha_inicio,
+                    "dias_restantes": diff,
+                    "tipo_alerta": "atrasado",
+                })
+            elif diff <= dias_umbral:
+                alertas.append({
+                    "id_proyecto": p.id_proyecto,
+                    "nombre_proyecto": p.nombre_proyecto,
+                    "nombre_cliente": p.nombre_cliente,
+                    "estado": p.estado,
+                    "fecha_relevante": p.fecha_inicio,
+                    "dias_restantes": diff,
+                    "tipo_alerta": "iniciar_pronto",
+                })
+
+        elif p.estado == "en_curso" and p.fecha_termino_maximo:
+            diff = (p.fecha_termino_maximo - hoy).days
+            if 0 <= diff <= dias_umbral:
+                alertas.append({
+                    "id_proyecto": p.id_proyecto,
+                    "nombre_proyecto": p.nombre_proyecto,
+                    "nombre_cliente": p.nombre_cliente,
+                    "estado": p.estado,
+                    "fecha_relevante": p.fecha_termino_maximo,
+                    "dias_restantes": diff,
+                    "tipo_alerta": "finalizar_pronto",
+                })
+
+    # Ordenar: atrasados primero, luego por días_restantes ascendente
+    order = {"atrasado": 0, "finalizar_pronto": 1, "iniciar_pronto": 2}
+    alertas.sort(key=lambda a: (order.get(a["tipo_alerta"], 9), a["dias_restantes"]))
+    return alertas
 
 
 def listar_proyectos(db: Session, estado: Optional[str] = None):

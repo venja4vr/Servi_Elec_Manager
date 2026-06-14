@@ -18,12 +18,51 @@ class PrecioManualIn(BaseModel):
     precio: float = Field(..., ge=0)
 
 
+class MaterialDesdeScraper(BaseModel):
+    nombre_material: str = Field(..., min_length=2, max_length=50)
+    precio: float = Field(..., ge=0)
+    tienda: str = Field(..., description="Sodimac | Easy")
+    categoria_id: str
+
+
 @router.get("/", response_model=List[MaterialOut])
 def listar(solo_criticos: bool = Query(False), db: Session = Depends(get_db), _=Depends(get_current_user)):
     return material_controller.get_all(db, solo_criticos)
 
 
 # Rutas estáticas antes de las paramétricas para evitar ambigüedades
+@router.post("/crear-desde-scraper", response_model=MaterialOut, status_code=201)
+def crear_desde_scraper(
+    data: MaterialDesdeScraper,
+    db: Session = Depends(get_db),
+    _=Depends(require_admin),
+):
+    """Crea un material nuevo en inventario a partir de un resultado del comparador de precios.
+    Stock inicial 0. El precio del scraper se guarda como precio_unitario y precio_sodimac_actual."""
+    from app.models.material import Material
+    from app.models.categoria import Categoria
+    from app.schemas.material import MaterialCreate
+    import uuid
+
+    if not db.query(Categoria).filter(Categoria.id_categoria == data.categoria_id).first():
+        raise HTTPException(status_code=400, detail="Categoría no encontrada")
+
+    nuevo = Material(
+        id_material=uuid.uuid4().hex[:20],
+        nombre_material=data.nombre_material.strip(),
+        stock_actual=0,
+        stock_critico=0,
+        precio_unitario=round(data.precio, 2),
+        precio_sodimac_actual=round(data.precio, 2),
+        categoria_id=data.categoria_id,
+        unidad_compra="unidad",
+    )
+    db.add(nuevo)
+    db.commit()
+    db.refresh(nuevo)
+    return nuevo
+
+
 @router.post("/actualizar-precios")
 def actualizar_todos_precios(db: Session = Depends(get_db), _=Depends(require_admin)):
     """Actualiza precios Sodimac de todos los materiales. Puede demorar varios minutos."""
