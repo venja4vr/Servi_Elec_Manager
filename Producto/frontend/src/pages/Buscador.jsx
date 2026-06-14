@@ -290,7 +290,7 @@ function Buscador() {
                 >
                     <div>
                         <h1>Comparador de precios</h1>
-                        <p>Busca materiales en Sodimac y consulta el histórico de precios del inventario.</p>
+                        <p>Busca materiales en Sodimac y Easy, y consulta el histórico de precios del inventario.</p>
                     </div>
                     {esAdmin && (
                         <button
@@ -364,14 +364,18 @@ function Buscador() {
                         <div className="text-center py-5 text-muted">Cargando productos...</div>
                     ) : productos.length === 0 ? (
                         <div className="text-center py-5 text-muted">No se encontraron productos.</div>
-                    ) : (
-                        productos.map((producto) => {
+                    ) : (() => {
+                        const preciosValidos = productos.map(p => p.precio).filter(p => p !== null);
+                        const precioMinimo = preciosValidos.length > 0 ? Math.min(...preciosValidos) : null;
+
+                        return productos.map((producto) => {
                             const materialMatch = encontrarMatch(producto, materiales, materialIdParam);
+                            const esMasBarato = precioMinimo !== null && producto.precio === precioMinimo;
 
                             return (
                                 <div key={`${producto.codigo}-${producto.tienda}`}>
                                     {/* Fila del producto */}
-                                    <div className="resource-row">
+                                    <div className="resource-row" style={esMasBarato ? { border: "2px solid #4d5b43", borderRadius: "12px", background: "#f0f5ee" } : {}}>
                                         {/* IMAGEN */}
                                         <div
                                             className="resource-image"
@@ -436,11 +440,33 @@ function Buscador() {
 
                                         {/* TIENDA + BOTÓN */}
                                         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                                            <span
-                                                className={`badge ${producto.tienda === "Sodimac" ? "bg-primary" : "bg-danger"}`}
-                                            >
+                                            <span style={{
+                                                display: "inline-block",
+                                                padding: "3px 10px",
+                                                borderRadius: "999px",
+                                                fontSize: "0.75rem",
+                                                fontWeight: "800",
+                                                background: producto.tienda === "Sodimac" ? "#f5c518" : "#4d5b43",
+                                                color:      producto.tienda === "Sodimac" ? "#1a1a1a"  : "#ffffff",
+                                                textAlign: "center",
+                                            }}>
                                                 {producto.tienda}
                                             </span>
+                                            {esMasBarato && (
+                                                <span style={{
+                                                    display: "inline-block",
+                                                    padding: "2px 8px",
+                                                    borderRadius: "999px",
+                                                    fontSize: "0.68rem",
+                                                    fontWeight: "900",
+                                                    background: "#4d5b43",
+                                                    color: "#ffffff",
+                                                    textAlign: "center",
+                                                    letterSpacing: "0.03em",
+                                                }}>
+                                                    MÁS BARATO
+                                                </span>
+                                            )}
                                             <button
                                                 type="button"
                                                 className="btn btn-outline-success btn-sm"
@@ -465,7 +491,7 @@ function Buscador() {
                                         >
                                             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
                                                 <h6 style={{ margin: 0, fontWeight: "900", color: "#1f2418" }}>
-                                                    Histórico Sodimac — {materialMatch.nombre_material}
+                                                    Histórico de precios — {materialMatch.nombre_material}
                                                     <span style={{ fontWeight: "400", color: "#6b7280", fontSize: "0.85rem", marginLeft: "8px" }}>
                                                         últimos 30 días
                                                     </span>
@@ -531,18 +557,26 @@ function Buscador() {
                                                                             {formatearPrecio(r.precio)}
                                                                         </td>
                                                                         <td style={{ padding: "9px 14px", textAlign: "center" }}>
-                                                                            <span
-                                                                                style={{
-                                                                                    padding: "3px 10px",
-                                                                                    borderRadius: "999px",
-                                                                                    fontSize: "0.75rem",
-                                                                                    fontWeight: "800",
-                                                                                    background: r.fuente === "sodimac" ? "#e5efe2" : "#fff1cc",
-                                                                                    color: r.fuente === "sodimac" ? "#2f7d46" : "#a66a00",
-                                                                                }}
-                                                                            >
-                                                                                {r.fuente === "sodimac" ? "Sodimac" : "Manual"}
-                                                                            </span>
+                                                                            {(() => {
+                                                                                const f = r.fuente?.toLowerCase();
+                                                                                const cfg = f === "sodimac"
+                                                                                    ? { bg: "#fff1cc", fg: "#a66a00", label: "Sodimac" }
+                                                                                    : f === "easy"
+                                                                                    ? { bg: "#e5efe2", fg: "#2f7d46", label: "Easy" }
+                                                                                    : { bg: "#f0f0f0", fg: "#555555", label: "Manual" };
+                                                                                return (
+                                                                                    <span style={{
+                                                                                        padding: "3px 10px",
+                                                                                        borderRadius: "999px",
+                                                                                        fontSize: "0.75rem",
+                                                                                        fontWeight: "800",
+                                                                                        background: cfg.bg,
+                                                                                        color: cfg.fg,
+                                                                                    }}>
+                                                                                        {cfg.label}
+                                                                                    </span>
+                                                                                );
+                                                                            })()}
                                                                         </td>
                                                                     </tr>
                                                                 ))}
@@ -618,8 +652,8 @@ function Buscador() {
                                     )}
                                 </div>
                             );
-                        })
-                    )}
+                        });
+                    })()}
                 </div>
             </div>
         </AppLayout>

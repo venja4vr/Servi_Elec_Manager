@@ -9,13 +9,16 @@ from app.services.scraper_sodimac import buscar_en_sodimac
 logger = logging.getLogger(__name__)
 
 
-def _insertar_historico(material_id: str, precio: float, fuente: str, db: Session) -> None:
+def _insertar_historico(material_id: str, precio: float, fuente: str, db: Session, tienda: str = "Sodimac") -> None:
     registro = MaterialPrecioHistorico(
         material_id=material_id,
         precio=round(precio, 2),
         fuente=fuente,
+        tienda=tienda,
     )
     db.add(registro)
+    # TODO (PASO 7): para actualizar precios Easy de forma automática, llamar
+    # buscar_en_easy(material.nombre_material) aquí y guardar con tienda="Easy".
 
 
 def actualizar_precio_material(material_id: str, db: Session) -> bool:

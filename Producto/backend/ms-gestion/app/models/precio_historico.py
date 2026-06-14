@@ -11,4 +11,5 @@ class MaterialPrecioHistorico(Base):
     material_id = Column(String(20), ForeignKey("material.id_material", ondelete="CASCADE"), nullable=False)
     precio      = Column(Numeric(12, 2), nullable=False)
     fuente      = Column(String(20), nullable=False)
+    tienda      = Column(String(20), nullable=True, default="Sodimac")
     fecha       = Column(DateTime, nullable=False, server_default=func.now())
