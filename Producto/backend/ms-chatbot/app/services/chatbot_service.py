@@ -324,6 +324,8 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
 
         sesion.plantilla_id    = plantilla["id_plantilla"]
         sesion.nombre_servicio = plantilla["nombre_servicio"]
+        sesion.dias_minimos    = plantilla.get("dias_minimos") or 1
+        sesion.horas_minimas   = plantilla.get("horas_minimas") or 1
 
         # Obtener cotizacion calculada con precios Sodimac actuales
         cotizacion = gestion_client.obtener_cotizacion_plantilla(sesion.plantilla_id)
@@ -421,6 +423,7 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
             grupo = gestion_client.obtener_comuna_grupo_por_nombre(texto_lower)
             sesion.comuna_grupo_id = grupo.get("id_cg") if grupo else None
         elif campo == "dias_estimados":
+            dias_min = sesion.dias_minimos or 1
             try:
                 dias_val = int(texto.strip())
                 if not (1 <= dias_val <= 30):
@@ -430,8 +433,15 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
                     "Por favor escribe un número entre 1 y 30.\n\n"
                     "_Escribe *volver* para la pregunta anterior o *menú* para cancelar._"
                 )
+            if dias_val < dias_min:
+                return (
+                    f"Este servicio requiere mínimo *{dias_min} día{'s' if dias_min != 1 else ''}*.\n\n"
+                    f"Por favor escribe un número igual o mayor a {dias_min}.\n\n"
+                    "_Escribe *volver* para la pregunta anterior o *menú* para cancelar._"
+                )
             setattr(sesion, campo, dias_val)
         elif campo == "horas_diarias":
+            horas_min = sesion.horas_minimas or 1
             try:
                 horas_val = int(texto.strip())
                 if not (1 <= horas_val <= 12):
@@ -439,6 +449,12 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
             except (ValueError, TypeError):
                 return (
                     "Por favor escribe un número entre 1 y 12.\n\n"
+                    "_Escribe *volver* para la pregunta anterior o *menú* para cancelar._"
+                )
+            if horas_val < horas_min:
+                return (
+                    f"Este servicio requiere mínimo *{horas_min} hora{'s' if horas_min != 1 else ''} diarias*.\n\n"
+                    f"Por favor escribe un número igual o mayor a {horas_min}.\n\n"
                     "_Escribe *volver* para la pregunta anterior o *menú* para cancelar._"
                 )
             setattr(sesion, campo, horas_val)

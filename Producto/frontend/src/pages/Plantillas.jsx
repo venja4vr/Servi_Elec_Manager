@@ -57,6 +57,8 @@ function Plantillas() {
     const [fDiasDefault, setFDiasDefault] = useState("");
     const [fHorasDiarias, setFHorasDiarias] = useState("8");
     const [fTrabajadoresDefault, setFTrabajadoresDefault] = useState("1");
+    const [fDiasMinimos, setFDiasMinimos] = useState("1");
+    const [fHorasMinimas, setFHorasMinimas] = useState("1");
     const [fErrores, setFErrores] = useState({});
 
     // Materiales en el modal
@@ -111,7 +113,7 @@ function Plantillas() {
         setModoEdicion(false);
         setPlantillaId(null);
         setFNombre(""); setFDescripcion(""); setFCategoria(""); setFActiva(true); setFDiasDefault("");
-        setFHorasDiarias("8"); setFTrabajadoresDefault("1");
+        setFHorasDiarias("8"); setFTrabajadoresDefault("1"); setFDiasMinimos("1"); setFHorasMinimas("1");
         setFErrores({});
         setMaterialesModal([]);
         setBusquedaMat("");
@@ -129,6 +131,8 @@ function Plantillas() {
         setFDiasDefault(plantilla.dias_default != null ? String(plantilla.dias_default) : "");
         setFHorasDiarias(plantilla.horas_diarias_default != null ? String(plantilla.horas_diarias_default) : "8");
         setFTrabajadoresDefault(plantilla.trabajadores_default != null ? String(plantilla.trabajadores_default) : "1");
+        setFDiasMinimos(plantilla.dias_minimos != null ? String(plantilla.dias_minimos) : "1");
+        setFHorasMinimas(plantilla.horas_minimas != null ? String(plantilla.horas_minimas) : "1");
         setFErrores({});
         setBusquedaMat("");
         setMostrarModal(true);
@@ -185,6 +189,8 @@ function Plantillas() {
             dias_default: fDiasDefault ? parseInt(fDiasDefault) : null,
             horas_diarias_default: fHorasDiarias ? parseInt(fHorasDiarias) : 8,
             trabajadores_default: fTrabajadoresDefault ? parseInt(fTrabajadoresDefault) : 1,
+            dias_minimos: fDiasMinimos ? parseInt(fDiasMinimos) : 1,
+            horas_minimas: fHorasMinimas ? parseInt(fHorasMinimas) : 1,
             materiales: materialesModal.map((m) => ({
                 material_id: m.material_id,
                 cantidad_sugerida: parseFloat(m.cantidad_sugerida),
@@ -540,7 +546,7 @@ function Plantillas() {
                             </div>
 
                             {/* Campos de recursos */}
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "20px" }}>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
                                 <div>
                                     <label style={estiloLabel}>Horas diarias de trabajo</label>
                                     <input
@@ -569,6 +575,51 @@ function Plantillas() {
                                         value={fTrabajadoresDefault}
                                         onChange={(e) => setFTrabajadoresDefault(e.target.value)}
                                     />
+                                </div>
+                            </div>
+
+                            {/* Mínimos del servicio */}
+                            <div
+                                style={{
+                                    background: "#f5f1e8",
+                                    border: "1px solid #e6dfd2",
+                                    borderRadius: "14px",
+                                    padding: "14px 16px",
+                                    marginBottom: "20px",
+                                }}
+                            >
+                                <p style={{ fontWeight: "800", color: "#1f2418", fontSize: "0.88rem", margin: "0 0 10px" }}>
+                                    Mínimos requeridos por el servicio
+                                </p>
+                                <p style={{ color: "#6b7280", fontSize: "0.78rem", margin: "0 0 12px" }}>
+                                    El bot rechazará valores inferiores a estos al preguntar días y horas al cliente.
+                                </p>
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                                    <div>
+                                        <label style={estiloLabel}>Días mínimos</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            step="1"
+                                            placeholder="1"
+                                            style={estiloInput}
+                                            value={fDiasMinimos}
+                                            onChange={(e) => setFDiasMinimos(e.target.value)}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={estiloLabel}>Horas mínimas/día</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="12"
+                                            step="1"
+                                            placeholder="1"
+                                            style={estiloInput}
+                                            value={fHorasMinimas}
+                                            onChange={(e) => setFHorasMinimas(e.target.value)}
+                                        />
+                                    </div>
                                 </div>
                             </div>
 

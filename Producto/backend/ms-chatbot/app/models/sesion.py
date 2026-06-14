@@ -39,6 +39,8 @@ class SesionChat:
     observaciones:     Optional[str] = None # "ninguna"
 
     cotizacion_texto:  Optional[str] = None # Texto guardado para re-mostrar en "volver"
+    dias_minimos:      Optional[int] = None # Mínimo de días requeridos por la plantilla
+    horas_minimas:     Optional[int] = None # Mínimo de horas diarias requeridas por la plantilla
 
     # Control interno
     paso_recopilacion: int = 0 # En qué pregunta de la ficha vamos (0,1,2,3)

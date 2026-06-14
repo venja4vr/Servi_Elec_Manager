@@ -16,6 +16,8 @@ class Plantilla(Base):
     dias_default          = Column(Integer, nullable=True, default=1)
     horas_diarias_default = Column(Integer, nullable=True, default=8)
     trabajadores_default  = Column(Integer, nullable=True, default=1)
+    dias_minimos          = Column(Integer, nullable=True, default=1)
+    horas_minimas         = Column(Integer, nullable=True, default=1)
 
     @property
     def num_materiales(self) -> int:

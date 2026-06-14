@@ -26,6 +26,8 @@ class PlantillaCreate(BaseModel):
     dias_default: Optional[int] = Field(default=1, ge=1)
     horas_diarias_default: Optional[int] = Field(default=8, ge=1, le=24)
     trabajadores_default: Optional[int] = Field(default=1, ge=1, le=20)
+    dias_minimos: Optional[int] = Field(default=1, ge=1)
+    horas_minimas: Optional[int] = Field(default=1, ge=1)
     materiales: List[MaterialPlantillaIn] = []
 
 
@@ -38,6 +40,8 @@ class PlantillaUpdate(BaseModel):
     dias_default: Optional[int] = Field(default=None, ge=1)
     horas_diarias_default: Optional[int] = Field(default=None, ge=1, le=24)
     trabajadores_default: Optional[int] = Field(default=None, ge=1, le=20)
+    dias_minimos: Optional[int] = Field(default=None, ge=1)
+    horas_minimas: Optional[int] = Field(default=None, ge=1)
     materiales: Optional[List[MaterialPlantillaIn]] = None
 
 
@@ -53,6 +57,8 @@ class PlantillaOut(BaseModel):
     dias_default: Optional[int] = 1
     horas_diarias_default: Optional[int] = 8
     trabajadores_default: Optional[int] = 1
+    dias_minimos: Optional[int] = 1
+    horas_minimas: Optional[int] = 1
 
     class Config:
         from_attributes = True

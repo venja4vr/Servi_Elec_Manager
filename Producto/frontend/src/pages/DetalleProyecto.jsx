@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import AppLayout from "../components/AppLayout";
 import {
     getProyecto,
+    getPlantilla,
     getMateriales,
     getMaterialesPlaneadosDeProyecto,
     actualizarProyecto,
@@ -66,6 +67,8 @@ function DetalleProyecto() {
     const [precioDia, setPrecioDia] = useState("60000");
     const [errDias, setErrDias] = useState("");
     const [errTrabajadores, setErrTrabajadores] = useState("");
+    const [diasMinimosPlantilla, setDiasMinimosPlantilla] = useState(1);
+    const [horasMinimosPlantilla, setHorasMinimosPlantilla] = useState(1);
 
     const [errEdNombreProyecto, setErrEdNombreProyecto] = useState("");
     const [errEdTipoProyecto, setErrEdTipoProyecto] = useState("");
@@ -226,6 +229,17 @@ function DetalleProyecto() {
         } catch {
             // non-critical
         }
+        // Cargar mínimos de la plantilla asociada (best-effort)
+        if (datosProyecto.plantilla_id) {
+            try {
+                const plantilla = await getPlantilla(datosProyecto.plantilla_id);
+                setDiasMinimosPlantilla(plantilla.dias_minimos || 1);
+                setHorasMinimosPlantilla(plantilla.horas_minimas || 1);
+            } catch {
+                // no bloquear si falla
+            }
+        }
+
         // Inicializar campos de costos desde datos del proyecto
         setDiasEstimados(String(proyecto.dias_estimados || 1));
         setHorasDiarias(String(proyecto.horas_diarias || 8));
@@ -458,6 +472,9 @@ function DetalleProyecto() {
         const diasN = Number(diasEstimados);
         const trabN = Number(cantTrabajadores);
         if (diasN < 1) { setErrDias("Mínimo 1 día"); return; }
+        if (diasN < diasMinimosPlantilla) { setErrDias(`Este servicio requiere mínimo ${diasMinimosPlantilla} día${diasMinimosPlantilla !== 1 ? "s" : ""}`); return; }
+        const horasN = Number(horasDiarias) || 8;
+        if (horasN < horasMinimosPlantilla) { setErrDias(`Este servicio requiere mínimo ${horasMinimosPlantilla} hora${horasMinimosPlantilla !== 1 ? "s" : ""} diarias`); return; }
         if (trabN < 1) { setErrTrabajadores("Mínimo 1 trabajador"); return; }
         setRecalculando(true);
         setErrCostos("");
