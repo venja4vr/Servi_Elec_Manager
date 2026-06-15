@@ -47,7 +47,7 @@ function Proyectos() {
     };
 
     const handleCambiarEstado = async (proyecto, nuevoEstado) => {
-        const accionesCriticas = ["en_curso", "cancelado"];
+        const accionesCriticas = ["en_curso", "finalizado", "cancelado"];
         if (accionesCriticas.includes(nuevoEstado)) {
             setAccionPendiente({ proyecto, nuevoEstado });
             setMostrarPassword(true);
@@ -281,13 +281,17 @@ function Proyectos() {
                     titulo={
                         accionPendiente?.nuevoEstado === "en_curso"
                             ? "Aceptar proyecto"
+                            : accionPendiente?.nuevoEstado === "finalizado"
+                            ? "Finalizar proyecto"
                             : "Cancelar proyecto"
                     }
                     mensaje={
                         accionPendiente
                             ? accionPendiente.nuevoEstado === "en_curso"
-                                ? `Vas a aceptar el proyecto "${accionPendiente.proyecto.nombre_proyecto}". Esto descontará los materiales del inventario.`
-                                : `Vas a cancelar el proyecto "${accionPendiente.proyecto.nombre_proyecto}".${
+                                ? `Estás por iniciar el proyecto "${accionPendiente.proyecto.nombre_proyecto}". Esto descontará los materiales del inventario.`
+                                : accionPendiente.nuevoEstado === "finalizado"
+                                ? `Estás por finalizar el proyecto "${accionPendiente.proyecto.nombre_proyecto}". Esta acción es importante.`
+                                : `Estás por cancelar el proyecto "${accionPendiente.proyecto.nombre_proyecto}".${
                                     accionPendiente.proyecto.estado === "en_curso"
                                         ? " Los materiales serán devueltos al inventario."
                                         : ""
@@ -295,10 +299,18 @@ function Proyectos() {
                             : ""
                     }
                     colorBoton={
-                        accionPendiente?.nuevoEstado === "en_curso" ? "btn-primary" : "btn-danger"
+                        accionPendiente?.nuevoEstado === "en_curso"
+                            ? "btn-primary"
+                            : accionPendiente?.nuevoEstado === "finalizado"
+                            ? "btn-success"
+                            : "btn-danger"
                     }
                     textoBoton={
-                        accionPendiente?.nuevoEstado === "en_curso" ? "Aceptar y descontar" : "Sí, cancelar"
+                        accionPendiente?.nuevoEstado === "en_curso"
+                            ? "Aceptar y descontar"
+                            : accionPendiente?.nuevoEstado === "finalizado"
+                            ? "Sí, finalizar"
+                            : "Sí, cancelar"
                     }
                     onConfirmar={async () => {
                         if (accionPendiente) {

@@ -51,13 +51,15 @@ function Login() {
             await login(correo, password);
             navigate("/home");
         } catch (err) {
-            const mensaje = err.message || "Error al iniciar sesión";
+            const mensaje = err.message || "";
             if (mensaje.toLowerCase().includes("pendiente")) {
                 setTipoError("warning");
+                setError(mensaje);
             } else {
                 setTipoError("danger");
+                setError("Correo o contraseña incorrectos. Inténtalo de nuevo.");
             }
-            setError(mensaje);
+            setPassword("");
         } finally {
             setCargando(false);
         }

@@ -1,3 +1,5 @@
+import re
+from datetime import date, timedelta
 from typing import Tuple, List
 from app.models.sesion import SesionChat, EstadoChat
 from app.services import sesion_service, gestion_client, whatsapp_service
@@ -39,6 +41,28 @@ COMUNAS_QUINTA_REGION = {
     "catemu", "isla de pascua", "juan fernández", "juan fernandez",
 }
 
+# Meses del año en español
+MESES = {
+    "enero": 1, "febrero": 2, "marzo": 3, "abril": 4,
+    "mayo": 5, "junio": 6, "julio": 7, "agosto": 8,
+    "septiembre": 9, "octubre": 10, "noviembre": 11, "diciembre": 12,
+}
+
+# Días de la semana para ignorarlos en expresiones como "el martes 5 de julio"
+DIAS_SEMANA = {
+    "lunes", "martes", "miercoles", "miércoles",
+    "jueves", "viernes", "sabado", "sábado", "domingo",
+}
+
+# Error de formato para fecha_preferida
+_FECHA_ERROR_MSG = (
+    "No reconozco esa fecha. Ejemplos válidos: 15/01/2027, 15-01-27, "
+    "mañana, en 5 días, 10 de julio, el martes 5 de diciembre.\n\n"
+    "---\n"
+    "Escribe *volver* para la pregunta anterior\n"
+    "Escribe *menú* para cancelar y volver al inicio"
+)
+
 # Las preguntas de la ficha, en orden
 PREGUNTAS_FICHA: List[Tuple[str, str]] = [
     ("nombre_cliente",  "¿Cuál es tu nombre completo?"),
@@ -49,6 +73,106 @@ PREGUNTAS_FICHA: List[Tuple[str, str]] = [
     ("horas_diarias",   "¿Cuántas horas al día se trabajará? Para servicios puntuales (ej: cambiar interruptores) suele ser 1-2h. Para trabajos completos 8h. Si dudas, escribe 8."),
     ("observaciones",   "¿Alguna observación adicional? (o escribe ninguna)"),
 ]
+
+
+# ── Parser de fechas ─────────────────────────────────────────
+
+def _parsear_fecha(texto: str) -> tuple:
+    """
+    Interpreta texto como fecha y devuelve (resultado, error).
+    resultado: "sin preferencia" | "YYYY-MM-DD" | None
+    error:     None si ok, string con mensaje de error si falla.
+    """
+    t = texto.strip().lower()
+
+    # Sin preferencia (pass-through)
+    _sin_pref = {"sin preferencia", "sin fecha", "no tengo preferencia",
+                 "cuando puedan", "cuando sea", "sin preferencia."}
+    if t in _sin_pref or t.startswith("sin preferencia"):
+        return ("sin preferencia", None)
+
+    hoy = date.today()
+    max_futuro = hoy + timedelta(days=180)
+
+    def _validar(d: date):
+        if d < hoy:
+            return (None, "No puedo agendar para fechas pasadas. " + _FECHA_ERROR_MSG.split("\n")[0])
+        if d > max_futuro:
+            return (None, "La fecha no puede ser a más de 6 meses en el futuro. " + _FECHA_ERROR_MSG.split("\n")[0])
+        return (d.strftime("%Y-%m-%d"), None)
+
+    # ── Palabras clave relativas ─────────────────────────────
+    if t == "hoy":
+        return _validar(hoy)
+    if t in ("mañana", "manana"):
+        return _validar(hoy + timedelta(days=1))
+    if t in ("pasado mañana", "pasado manana"):
+        return _validar(hoy + timedelta(days=2))
+    if t in ("próxima semana", "proxima semana"):
+        return _validar(hoy + timedelta(days=7))
+
+    # "en X días / en X dias"
+    m = re.match(r"^en\s+(\d+)\s+d[ií]as?$", t)
+    if m:
+        x = int(m.group(1))
+        if not (1 <= x <= 60):
+            return (None, "El número de días debe estar entre 1 y 60.")
+        return _validar(hoy + timedelta(days=x))
+
+    # ── Formatos numéricos ───────────────────────────────────
+    # DD/MM/YYYY | DD-MM-YYYY | DD MM YYYY
+    m = re.match(r"^(\d{1,2})[/\-\s](\d{1,2})[/\-\s](\d{4})$", t)
+    if m:
+        try:
+            return _validar(date(int(m.group(3)), int(m.group(2)), int(m.group(1))))
+        except ValueError:
+            return (None, _FECHA_ERROR_MSG)
+
+    # DD/MM/YY | DD-MM-YY (asume 20XX)
+    m = re.match(r"^(\d{1,2})[/\-](\d{1,2})[/\-](\d{2})$", t)
+    if m:
+        try:
+            return _validar(date(2000 + int(m.group(3)), int(m.group(2)), int(m.group(1))))
+        except ValueError:
+            return (None, _FECHA_ERROR_MSG)
+
+    # ── Formatos con nombre de mes ────────────────────────────
+    # Quitar prefijo "el <dia_semana> " o "<dia_semana> "
+    t_proc = t
+    for ds in DIAS_SEMANA:
+        t_proc = re.sub(rf"^el\s+{ds}\s+", "", t_proc)
+        t_proc = re.sub(rf"^{ds}\s+", "", t_proc)
+
+    # "10 de julio" | "10 de julio 2026"
+    m = re.match(r"^(\d{1,2})\s+de\s+([a-záéíóúñ]+)(?:\s+(\d{4}))?$", t_proc)
+    if m:
+        mes_str = m.group(2)
+        if mes_str in MESES:
+            try:
+                anio = int(m.group(3)) if m.group(3) else hoy.year
+                d = date(anio, MESES[mes_str], int(m.group(1)))
+                # Si el año implícito ya pasó, probar siguiente año
+                if not m.group(3) and d < hoy:
+                    d = date(hoy.year + 1, MESES[mes_str], int(m.group(1)))
+                return _validar(d)
+            except ValueError:
+                return (None, _FECHA_ERROR_MSG)
+
+    # "10 julio" | "10 julio 2026"
+    m = re.match(r"^(\d{1,2})\s+([a-záéíóúñ]+)(?:\s+(\d{4}))?$", t_proc)
+    if m:
+        mes_str = m.group(2)
+        if mes_str in MESES:
+            try:
+                anio = int(m.group(3)) if m.group(3) else hoy.year
+                d = date(anio, MESES[mes_str], int(m.group(1)))
+                if not m.group(3) and d < hoy:
+                    d = date(hoy.year + 1, MESES[mes_str], int(m.group(1)))
+                return _validar(d)
+            except ValueError:
+                return (None, _FECHA_ERROR_MSG)
+
+    return (None, _FECHA_ERROR_MSG)
 
 
 # ── Textos del bot ────────────────────────────────────────────
@@ -461,6 +585,12 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
                     "Escribe *menú* para cancelar y volver al inicio"
                 )
             setattr(sesion, campo, dias_val)
+        elif campo == "fecha_preferida":
+            resultado, error_fecha = _parsear_fecha(texto)
+            if error_fecha:
+                return error_fecha
+            # resultado es "sin preferencia" o "YYYY-MM-DD"
+            setattr(sesion, campo, resultado)
         elif campo == "horas_diarias":
             horas_min = sesion.horas_minimas or 1
             try:

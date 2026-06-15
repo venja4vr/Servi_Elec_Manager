@@ -8,6 +8,7 @@ import {
 } from "../services/api";
 
 const CARRITO_KEY = "recursos_pendientes_carrito";
+const NOTIF_VISTAS_KEY = "notif_vistas_count";
 
 const ROL_LABEL = { S: "SuperAdmin", A: "Administrador", T: "Técnico" };
 
@@ -19,6 +20,7 @@ function Sidebar() {
     const [cantidadRecursos, setCantidadRecursos] = useState(0);
     const [cantidadPendientes, setCantidadPendientes] = useState(0);
     const [cantidadNotificaciones, setCantidadNotificaciones] = useState(0);
+    const [hayNuevasNotif, setHayNuevasNotif] = useState(false);
 
     const rol = getUsuarioRol();
     const nombre = getUsuarioNombre();
@@ -47,7 +49,7 @@ function Sidebar() {
         return () => clearInterval(intervalo);
     }, [esSuperAdmin]);
 
-    // Contador de notificaciones no leídas (30s exactos)
+    // Contador de notificaciones no leídas (30s)
     useEffect(() => {
         cargarContadorNotificaciones();
         const intervalo = setInterval(cargarContadorNotificaciones, 30000);
@@ -72,10 +74,19 @@ function Sidebar() {
     const cargarContadorNotificaciones = async () => {
         try {
             const data = await contadorNoLeidas();
-            setCantidadNotificaciones(data.total ?? 0);
+            const total = data.total ?? 0;
+            setCantidadNotificaciones(total);
+            const vistas = parseInt(localStorage.getItem(NOTIF_VISTAS_KEY) || "0");
+            setHayNuevasNotif(total > vistas);
         } catch {
-            // silencioso hasta que el backend esté disponible
+            // silencioso
         }
+    };
+
+    const handleIrNotificaciones = () => {
+        localStorage.setItem(NOTIF_VISTAS_KEY, cantidadNotificaciones.toString());
+        setHayNuevasNotif(false);
+        navigate("/notificaciones");
     };
 
     const handleCerrarSesion = () => {
@@ -111,11 +122,13 @@ function Sidebar() {
 
                 <button
                     className={`sidebar-item ${isActive("/notificaciones") ? "active" : ""}`}
-                    onClick={() => navigate("/notificaciones")}
+                    onClick={handleIrNotificaciones}
                 >
                     <span>Notificaciones</span>
                     {cantidadNotificaciones > 0 && (
-                        <span className="sidebar-badge warning">{cantidadNotificaciones}</span>
+                        <span className={`sidebar-badge ${hayNuevasNotif ? "nueva" : "warning"}`}>
+                            {cantidadNotificaciones}
+                        </span>
                     )}
                 </button>
 

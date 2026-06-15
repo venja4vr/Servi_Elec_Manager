@@ -286,7 +286,7 @@ function Inventario() {
                                             </span>
                                         </>
                                     ) : (
-                                        <span style={{ color: "#6b7280" }}>No registrado</span>
+                                        <span style={{ color: "#6b7280" }}>Sin datos confiables</span>
                                     )}
                                     <br />
                                     <button

@@ -18,13 +18,21 @@ export async function fetchAPI(endpoint, options = {}) {
     });
 
     if (!response.ok) {
-        if (response.status === 401 && endpoint !== "/auth/login") {
-            localStorage.removeItem("token");
-            localStorage.removeItem("usuario_nombre");
-            localStorage.removeItem("usuario_rol");
-            localStorage.removeItem("usuario_id");
-            window.location.href = "/login?expired=1";
-            return;
+        if (response.status === 401) {
+            const esLoginOVerificacion =
+                endpoint === "/auth/login" ||
+                endpoint.includes("verify-password") ||
+                endpoint.includes("verificar-password") ||
+                endpoint.includes("verificar_password");
+
+            if (!esLoginOVerificacion) {
+                localStorage.removeItem("token");
+                localStorage.removeItem("usuario_nombre");
+                localStorage.removeItem("usuario_rol");
+                localStorage.removeItem("usuario_id");
+                window.location.href = "/login?expired=1";
+                return;
+            }
         }
 
         const error = await response.json().catch(() => ({ detail: "Error desconocido" }));
