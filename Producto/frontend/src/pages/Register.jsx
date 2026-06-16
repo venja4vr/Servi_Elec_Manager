@@ -28,7 +28,7 @@ function Register() {
         const v = valor.trim();
         if (!v) return "El nombre es obligatorio";
         if (v.length < 3) return "El nombre debe tener al menos 3 caracteres";
-        if (v.length > 50) return "El nombre no puede superar 50 caracteres";
+        if (v.length > 80) return "El nombre no puede superar 80 caracteres";
         return "";
     };
 
@@ -137,7 +137,7 @@ function Register() {
                             <input
                                 type="text"
                                 placeholder="Ingresa tu nombre"
-                                maxLength={50}
+                                maxLength={80}
                                 value={nombre}
                                 onChange={(e) => setNombre(e.target.value)}
                                 onBlur={handleBlurNombre}

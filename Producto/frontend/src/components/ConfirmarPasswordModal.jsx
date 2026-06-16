@@ -85,9 +85,10 @@ function ConfirmarPasswordModal({
                                 <label className="form-label">Tu contraseña</label>
                                 <input
                                     type="password"
-                                    className="form-control"
+                                    className={`form-control ${error && !password ? "is-invalid" : ""}`}
                                     value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
+                                    onChange={(e) => { setPassword(e.target.value); if (e.target.value) setError(""); }}
+                                    onBlur={() => { if (!password) setError("Debes ingresar tu contraseña"); }}
                                     autoFocus
                                     disabled={verificando}
                                 />

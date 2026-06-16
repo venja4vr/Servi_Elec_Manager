@@ -12,13 +12,9 @@ import {
     buscarPrecios,
     crearMaterialDesdeScraper,
     getUsuarioRol,
+    getCategoriasPlantilla,
+    crearCategoriaPlantilla,
 } from "../services/api";
-
-const CATEGORIAS = [
-    "Instalaciones Eléctricas",
-    "Mantenciones Eléctricas",
-    "Servicios Industriales",
-];
 
 function badgeCategoria(cat) {
     if (!cat) return { background: "#f5f1e8", color: "#6b7280" };
@@ -64,6 +60,13 @@ function Plantillas() {
     const [fHorasMinimas, setFHorasMinimas] = useState("1");
     const [fErrores, setFErrores] = useState({});
 
+    // Categorías de plantilla (dinámicas)
+    const [categoriasPlantilla, setCategoriasPlantilla] = useState([]);
+    const [mostrarModalCat, setMostrarModalCat] = useState(false);
+    const [nuevaCatNombre, setNuevaCatNombre] = useState("");
+    const [creandoCat, setCreandoCat] = useState(false);
+    const [errCat, setErrCat] = useState("");
+
     // Materiales en el modal
     const [materialesModal, setMaterialesModal] = useState([]);
     // [{ material_id, nombre_material, cantidad_sugerida, unidad }]
@@ -89,8 +92,18 @@ function Plantillas() {
     const [mostrarEliminar, setMostrarEliminar] = useState(false);
     const [plantillaAEliminar, setPlantillaAEliminar] = useState(null);
 
+    const cargarCategoriasPlantilla = async () => {
+        try {
+            const data = await getCategoriasPlantilla();
+            setCategoriasPlantilla(data);
+        } catch {
+            // silencioso — el select mostrará vacío
+        }
+    };
+
     useEffect(() => {
         cargarDatos();
+        cargarCategoriasPlantilla();
         getCategorias().then(setCategoriasScraper).catch(() => {});
         // Cerrar autocomplete al hacer click fuera
         const handler = (e) => {
@@ -116,6 +129,34 @@ function Plantillas() {
             setError(err.message || "Error al cargar plantillas");
         } finally {
             setCargando(false);
+        }
+    };
+
+    const abrirModalCategoria = () => {
+        setNuevaCatNombre("");
+        setErrCat("");
+        setMostrarModalCat(true);
+    };
+
+    const confirmarNuevaCategoria = async () => {
+        const nombre = nuevaCatNombre.trim();
+        if (nombre.length < 2) { setErrCat("El nombre debe tener al menos 2 caracteres."); return; }
+        if (nombre.length > 80) { setErrCat("Máximo 80 caracteres."); return; }
+        setCreandoCat(true);
+        setErrCat("");
+        try {
+            const idGenerado = "cat_" + nombre.toLowerCase()
+                .normalize("NFD").replace(/[̀-ͯ]/g, "")
+                .replace(/[^a-z0-9]+/g, "_").replace(/(^_|_$)/g, "")
+                .substring(0, 27);
+            const nueva = await crearCategoriaPlantilla({ id_categoria: idGenerado, nombre });
+            await cargarCategoriasPlantilla();
+            setFCategoria(nueva.nombre);
+            setMostrarModalCat(false);
+        } catch (err) {
+            setErrCat(err.message || "Error al crear la categoría.");
+        } finally {
+            setCreandoCat(false);
         }
     };
 
@@ -180,12 +221,35 @@ function Plantillas() {
     // ── Validar y guardar ─────────────────────────────────────────
     const validar = () => {
         const e = {};
-        if (!fNombre.trim() || fNombre.trim().length < 3)
+        const nombre = fNombre.trim();
+        if (!nombre || nombre.length < 3)
             e.nombre = "El nombre debe tener al menos 3 caracteres.";
-        if (fNombre.trim().length > 60)
+        else if (nombre.length > 60)
             e.nombre = "El nombre no puede superar 60 caracteres.";
+
         if (!fCategoria)
             e.categoria = "Selecciona una categoría.";
+
+        const diasDef = fDiasDefault !== "" ? parseInt(fDiasDefault) : null;
+        if (diasDef !== null && (isNaN(diasDef) || diasDef < 1 || diasDef > 30))
+            e.diasDefault = "Los días estimados deben estar entre 1 y 30.";
+
+        const horas = parseInt(fHorasDiarias);
+        if (isNaN(horas) || horas < 1 || horas > 12)
+            e.horasDiarias = "Las horas diarias deben estar entre 1 y 12.";
+
+        const trabajadores = parseInt(fTrabajadoresDefault);
+        if (isNaN(trabajadores) || trabajadores < 1 || trabajadores > 20)
+            e.trabajadores = "El número de trabajadores debe estar entre 1 y 20.";
+
+        const diasMin = parseInt(fDiasMinimos);
+        if (isNaN(diasMin) || diasMin < 1)
+            e.diasMinimos = "Los días mínimos deben ser al menos 1.";
+
+        const horasMin = parseInt(fHorasMinimas);
+        if (isNaN(horasMin) || horasMin < 1 || horasMin > 12)
+            e.horasMinimas = "Las horas mínimas deben estar entre 1 y 12.";
+
         for (const m of materialesModal) {
             const c = parseFloat(m.cantidad_sugerida);
             if (isNaN(c) || c <= 0) {
@@ -565,16 +629,38 @@ function Plantillas() {
                             {/* Campo Categoría */}
                             <div style={{ marginBottom: "16px" }}>
                                 <label style={estiloLabel}>Categoría *</label>
-                                <select
-                                    style={{ ...estiloInput, borderColor: fErrores.categoria ? "#dc2626" : "#d9d4cc" }}
-                                    value={fCategoria}
-                                    onChange={(e) => setFCategoria(e.target.value)}
-                                >
-                                    <option value="">Seleccionar categoría</option>
-                                    {CATEGORIAS.map((c) => (
-                                        <option key={c} value={c}>{c}</option>
-                                    ))}
-                                </select>
+                                <div style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
+                                    <select
+                                        style={{ ...estiloInput, borderColor: fErrores.categoria ? "#dc2626" : "#d9d4cc", flex: 1 }}
+                                        value={fCategoria}
+                                        onChange={(e) => setFCategoria(e.target.value)}
+                                    >
+                                        <option value="">Seleccionar categoría</option>
+                                        {categoriasPlantilla.map((c) => (
+                                            <option key={c.id_categoria} value={c.nombre}>{c.nombre}</option>
+                                        ))}
+                                    </select>
+                                    {esAdmin && (
+                                        <button
+                                            type="button"
+                                            style={{
+                                                border: "none",
+                                                background: "#e5efe2",
+                                                color: "#2e321b",
+                                                borderRadius: "12px",
+                                                padding: "12px 14px",
+                                                fontWeight: "800",
+                                                fontSize: "0.82rem",
+                                                cursor: "pointer",
+                                                whiteSpace: "nowrap",
+                                                flexShrink: 0,
+                                            }}
+                                            onClick={abrirModalCategoria}
+                                        >
+                                            + Nueva
+                                        </button>
+                                    )}
+                                </div>
                                 {fErrores.categoria && <p style={estiloError}>{fErrores.categoria}</p>}
                             </div>
 
@@ -611,15 +697,17 @@ function Plantillas() {
                                 <input
                                     type="number"
                                     min="1"
+                                    max="30"
                                     step="1"
                                     placeholder="Ej: 2"
-                                    style={estiloInput}
+                                    style={{ ...estiloInput, borderColor: fErrores.diasDefault ? "#dc2626" : "#d9d4cc" }}
                                     value={fDiasDefault}
                                     onChange={(e) => setFDiasDefault(e.target.value)}
                                 />
-                                <p style={{ color: "#6b7280", fontSize: "0.8rem", margin: "4px 0 0" }}>
-                                    Duración típica del servicio (opcional, referencia para costos)
-                                </p>
+                                {fErrores.diasDefault
+                                    ? <p style={estiloError}>{fErrores.diasDefault}</p>
+                                    : <p style={{ color: "#6b7280", fontSize: "0.8rem", margin: "4px 0 0" }}>Duración típica del servicio (opcional, referencia para costos)</p>
+                                }
                             </div>
 
                             {/* Campos de recursos */}
@@ -632,26 +720,28 @@ function Plantillas() {
                                         max="12"
                                         step="1"
                                         placeholder="8"
-                                        style={estiloInput}
+                                        style={{ ...estiloInput, borderColor: fErrores.horasDiarias ? "#dc2626" : "#d9d4cc" }}
                                         value={fHorasDiarias}
                                         onChange={(e) => setFHorasDiarias(e.target.value)}
                                     />
-                                    <p style={{ color: "#6b7280", fontSize: "0.8rem", margin: "4px 0 0" }}>
-                                        1–12 h/día
-                                    </p>
+                                    {fErrores.horasDiarias
+                                        ? <p style={estiloError}>{fErrores.horasDiarias}</p>
+                                        : <p style={{ color: "#6b7280", fontSize: "0.8rem", margin: "4px 0 0" }}>1–12 h/día</p>
+                                    }
                                 </div>
                                 <div>
                                     <label style={estiloLabel}>Trabajadores necesarios</label>
                                     <input
                                         type="number"
                                         min="1"
-                                        max="10"
+                                        max="20"
                                         step="1"
                                         placeholder="1"
-                                        style={estiloInput}
+                                        style={{ ...estiloInput, borderColor: fErrores.trabajadores ? "#dc2626" : "#d9d4cc" }}
                                         value={fTrabajadoresDefault}
                                         onChange={(e) => setFTrabajadoresDefault(e.target.value)}
                                     />
+                                    {fErrores.trabajadores && <p style={estiloError}>{fErrores.trabajadores}</p>}
                                 </div>
                             </div>
 
@@ -679,10 +769,11 @@ function Plantillas() {
                                             min="1"
                                             step="1"
                                             placeholder="1"
-                                            style={estiloInput}
+                                            style={{ ...estiloInput, borderColor: fErrores.diasMinimos ? "#dc2626" : "#d9d4cc" }}
                                             value={fDiasMinimos}
                                             onChange={(e) => setFDiasMinimos(e.target.value)}
                                         />
+                                        {fErrores.diasMinimos && <p style={estiloError}>{fErrores.diasMinimos}</p>}
                                     </div>
                                     <div>
                                         <label style={estiloLabel}>Horas mínimas/día</label>
@@ -692,10 +783,11 @@ function Plantillas() {
                                             max="12"
                                             step="1"
                                             placeholder="1"
-                                            style={estiloInput}
+                                            style={{ ...estiloInput, borderColor: fErrores.horasMinimas ? "#dc2626" : "#d9d4cc" }}
                                             value={fHorasMinimas}
                                             onChange={(e) => setFHorasMinimas(e.target.value)}
                                         />
+                                        {fErrores.horasMinimas && <p style={estiloError}>{fErrores.horasMinimas}</p>}
                                     </div>
                                 </div>
                             </div>
@@ -1027,6 +1119,68 @@ function Plantillas() {
                                     disabled={guardando}
                                 >
                                     {guardando ? "Guardando..." : modoEdicion ? "Guardar cambios" : "Crear plantilla"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ── MINI-MODAL NUEVA CATEGORÍA ─────────────────────────── */}
+                {mostrarModalCat && (
+                    <div
+                        style={{
+                            position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            zIndex: 1070, padding: "16px",
+                        }}
+                        onClick={(e) => { if (e.target === e.currentTarget) setMostrarModalCat(false); }}
+                    >
+                        <div
+                            style={{
+                                background: "#fffdf8", borderRadius: "20px", padding: "28px",
+                                maxWidth: "380px", width: "100%",
+                                boxShadow: "0 24px 60px rgba(0,0,0,0.18)",
+                            }}
+                        >
+                            <h5 style={{ fontWeight: "900", marginBottom: "16px", color: "#1f2418" }}>
+                                Nueva categoría
+                            </h5>
+                            <div style={{ marginBottom: "16px" }}>
+                                <label style={estiloLabel}>Nombre de la categoría</label>
+                                <input
+                                    type="text"
+                                    maxLength={80}
+                                    placeholder="Ej: Servicios de emergencia 24h"
+                                    style={{ ...estiloInput, borderColor: errCat ? "#dc2626" : "#d9d4cc" }}
+                                    value={nuevaCatNombre}
+                                    onChange={(e) => { setNuevaCatNombre(e.target.value); setErrCat(""); }}
+                                    autoFocus
+                                    onKeyDown={(e) => { if (e.key === "Enter") confirmarNuevaCategoria(); }}
+                                />
+                                {errCat && <p style={estiloError}>{errCat}</p>}
+                            </div>
+                            <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                                <button
+                                    style={{
+                                        background: "#f5f1e8", border: "1px solid #ddd2bf",
+                                        borderRadius: "12px", padding: "10px 18px", fontWeight: "800", cursor: "pointer",
+                                    }}
+                                    onClick={() => setMostrarModalCat(false)}
+                                    disabled={creandoCat}
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    style={{
+                                        background: creandoCat ? "#6b7280" : "#4d5b43",
+                                        color: "white", border: "none",
+                                        borderRadius: "12px", padding: "10px 20px", fontWeight: "800",
+                                        cursor: creandoCat ? "not-allowed" : "pointer",
+                                    }}
+                                    onClick={confirmarNuevaCategoria}
+                                    disabled={creandoCat}
+                                >
+                                    {creandoCat ? "Creando..." : "Crear"}
                                 </button>
                             </div>
                         </div>

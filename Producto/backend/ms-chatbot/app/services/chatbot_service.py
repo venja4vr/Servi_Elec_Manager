@@ -5,12 +5,23 @@ from app.models.sesion import SesionChat, EstadoChat
 from app.services import sesion_service, gestion_client, whatsapp_service
 
 
-# Mapa de número → nombre de categoría
-CATEGORIAS = {
-    "1": "Instalaciones Eléctricas",
-    "2": "Mantenciones Eléctricas",
-    "3": "Servicios Industriales",
-}
+# Caché de categorías dinámicas (se carga desde ms-gestion al primer uso)
+_categorias_cache: dict | None = None
+_categorias_ts: float = 0
+_CATEGORIAS_TTL = 300  # 5 minutos
+
+
+def _obtener_categorias() -> dict:
+    """Devuelve {str_num: nombre} cargado desde la API con TTL de 5 min."""
+    import time
+    global _categorias_cache, _categorias_ts
+    ahora = time.time()
+    if _categorias_cache is None or (ahora - _categorias_ts) > _CATEGORIAS_TTL:
+        data = gestion_client.obtener_categorias_con_plantillas()
+        if data:
+            _categorias_cache = {str(i + 1): c["nombre"] for i, c in enumerate(data)}
+            _categorias_ts = ahora
+    return _categorias_cache or {}
 
 
 # Palabras que reinician la conversación desde cualquier estado
@@ -195,14 +206,21 @@ def _menu_principal() -> str:
 
 
 def _menu_categorias() -> str:
-    return (
-        "📂 *Seleccione una categoría:*\n\n"
-        "1️⃣  Instalaciones Eléctricas\n"
-        "2️⃣  Mantenciones Eléctricas\n"
-        "3️⃣  Servicios Industriales\n\n"
-        "_Escribe el número de tu elección_\n"
-        "_Escribe *menú* para volver al inicio_"
-    )
+    cats = _obtener_categorias()
+    if not cats:
+        return (
+            "📂 *Seleccione una categoría:*\n\n"
+            "_(Categorías no disponibles en este momento. Intente más tarde.)_\n\n"
+            "_Escribe *menú* para volver al inicio_"
+        )
+    emojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣"]
+    lineas = ["📂 *Seleccione una categoría:*\n"]
+    for i, (num, nombre) in enumerate(cats.items()):
+        emoji = emojis[i] if i < len(emojis) else f"{num}."
+        lineas.append(f"{emoji}  {nombre}")
+    lineas.append(f"\n_Escribe el número de tu elección_")
+    lineas.append("_Escribe *menú* para volver al inicio_")
+    return "\n".join(lineas)
 
 
 def _menu_servicios(plantillas: list, categoria: str) -> Tuple[str, dict]:
@@ -414,9 +432,12 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
 
     # ── Selección de categoría ───────────────────────────────
     if estado == EstadoChat.ESPERANDO_CATEGORIA:
-        cat = CATEGORIAS.get(texto_limpio)
+        cats = _obtener_categorias()
+        cat = cats.get(texto_limpio)
+        n = len(cats)
         if not cat:
-            return f"Por favor escribe 1, 2 o 3.\n\n{_menu_categorias()}"
+            opciones = f"1 al {n}" if n > 1 else "1"
+            return f"Por favor escribe un número del {opciones}.\n\n{_menu_categorias()}"
 
         # Traer plantillas activas de la categoría desde ms-gestion
         plantillas = gestion_client.obtener_plantillas_por_categoria(cat)

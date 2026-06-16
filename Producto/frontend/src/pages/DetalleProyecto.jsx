@@ -20,7 +20,8 @@ import {
     validarTexto,
     validarTextoOpcional,
     validarTelefono,
-    validarPrecio,
+    validarPresupuestoOpcional,
+    validarFechaTermino,
 } from "../utils/validaciones";
 
 function DetalleProyecto() {
@@ -144,23 +145,14 @@ function DetalleProyecto() {
         return mapa[estado] || estado;
     };
 
-    const vEdNombreProyecto = (v) => validarTexto(v, { minimo: 3, maximo: 50, etiqueta: "El nombre del proyecto" });
-    const vEdTipoProyecto = (v) => (!v ? "Selecciona un tipo de proyecto" : "");
-    const vEdNombreCliente = (v) => validarTexto(v, { minimo: 3, maximo: 50, etiqueta: "El nombre del cliente" });
+    const vEdNombreProyecto = (v) => validarTexto(v, { minimo: 3, maximo: 100, etiqueta: "El nombre del proyecto" });
+    const vEdTipoProyecto = () => ""; // opcional — cualquier valor o vacío es válido
+    const vEdNombreCliente = (v) => validarTexto(v, { minimo: 3, maximo: 80, etiqueta: "El nombre del cliente" });
     const vEdTelefono = (v) => validarTelefono(v, { obligatorio: false });
     const vEdDireccion = (v) => validarTextoOpcional(v, { maximo: 200, etiqueta: "La dirección" });
-    const vEdPresupuesto = (v, etiqueta) => {
-        if (!v) return "";
-        return validarPrecio(v, { etiqueta });
-    };
+    const vEdPresupuesto = (v, etiqueta) => validarPresupuestoOpcional(v, { etiqueta });
     const vEdObservaciones = (v) => validarTextoOpcional(v, { maximo: 500, etiqueta: "Las observaciones" });
-    const vEdFechas = (inicio, termino) => {
-        if (!inicio || !termino) return "";
-        if (new Date(termino) < new Date(inicio)) {
-            return "La fecha de término debe ser posterior a la fecha de inicio";
-        }
-        return "";
-    };
+    const vEdFechas = (inicio, termino) => validarFechaTermino(inicio, termino);
 
     const handleDescargarPdf = async () => {
         setDescargandoPdf(true);
@@ -773,7 +765,7 @@ function DetalleProyecto() {
                                                 value={datosEdicion.nombre_cliente}
                                                 onChange={(e) => handleCambioCampo("nombre_cliente", e.target.value)}
                                                 onBlur={() => setErrEdNombreCliente(vEdNombreCliente(datosEdicion.nombre_cliente))}
-                                                maxLength={50}
+                                                maxLength={80}
                                             />
                                             {errEdNombreCliente && (
                                                 <div className="invalid-feedback">{errEdNombreCliente}</div>
@@ -820,7 +812,7 @@ function DetalleProyecto() {
                                                 value={datosEdicion.nombre_proyecto}
                                                 onChange={(e) => handleCambioCampo("nombre_proyecto", e.target.value)}
                                                 onBlur={() => setErrEdNombreProyecto(vEdNombreProyecto(datosEdicion.nombre_proyecto))}
-                                                maxLength={50}
+                                                maxLength={100}
                                             />
                                             {errEdNombreProyecto && (
                                                 <div className="invalid-feedback">{errEdNombreProyecto}</div>

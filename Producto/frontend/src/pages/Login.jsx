@@ -28,6 +28,7 @@ function Login() {
 
     const validarPassword = (valor) => {
         if (!valor) return "La contraseña es obligatoria";
+        if (valor.length < 4) return "La contraseña debe tener al menos 4 caracteres";
         return "";
     };
 

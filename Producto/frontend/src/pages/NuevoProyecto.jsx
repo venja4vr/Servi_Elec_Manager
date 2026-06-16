@@ -10,7 +10,9 @@ import {
     validarTexto,
     validarTextoOpcional,
     validarTelefono,
-    validarPrecio,
+    validarPresupuestoOpcional,
+    validarFechaNoAnteriorHoy,
+    validarFechaTermino,
     validarSeleccion,
 } from "../utils/validaciones";
 
@@ -62,23 +64,14 @@ function NuevoProyecto() {
     };
 
     // ====== VALIDADORES POR CAMPO ======
-    const vNombreProyecto = (v) => validarTexto(v, { minimo: 3, maximo: 50, etiqueta: "El nombre del proyecto" });
+    const vNombreProyecto = (v) => validarTexto(v, { minimo: 3, maximo: 100, etiqueta: "El nombre del proyecto" });
     const vTipoProyecto = (v) => validarTextoOpcional(v, { maximo: 25, etiqueta: "El tipo de proyecto" });
-    const vNombreCliente = (v) => validarTexto(v, { minimo: 3, maximo: 50, etiqueta: "El nombre del cliente" });
+    const vNombreCliente = (v) => validarTexto(v, { minimo: 3, maximo: 80, etiqueta: "El nombre del cliente" });
     const vTelefono = (v) => validarTelefono(v, { obligatorio: false });
-    const vDireccion = (v) => validarTextoOpcional(v, { maximo: 150, etiqueta: "La dirección" });
-    const vPresupuesto = (v) => {
-        if (!v) return ""; // opcional
-        return validarPrecio(v, { etiqueta: "El presupuesto" });
-    };
-    const vFecha = (v) => {
-        if (!v) return ""; // opcional
-        const hoy = new Date();
-        hoy.setHours(0, 0, 0, 0);
-        const fecha = new Date(v);
-        if (fecha < hoy) return "La fecha no puede ser anterior a hoy";
-        return "";
-    };
+    const vDireccion = (v) => validarTextoOpcional(v, { maximo: 200, etiqueta: "La dirección" });
+    const vPresupuesto = (v) => validarPresupuestoOpcional(v, { etiqueta: "El presupuesto" });
+    const vFecha = (v) => validarFechaNoAnteriorHoy(v);
+    const vFechaConsistencia = () => validarFechaTermino(null, fechaTermino); // solo fecha término en esta pantalla
     const vPlantilla = (v) => validarSeleccion(v, "una plantilla");
     const vObservaciones = (v) => validarTextoOpcional(v, { maximo: 500, etiqueta: "Las observaciones" });
 
@@ -258,7 +251,7 @@ function NuevoProyecto() {
                                     onChange={(e) => setNombreCliente(e.target.value)}
                                     onBlur={blurNombreCliente}
                                     placeholder="Ej: Carlos Iturrieta"
-                                    maxLength={50}
+                                    maxLength={80}
                                 />
                                 {errNombreCliente && (
                                     <div className="invalid-feedback">{errNombreCliente}</div>
@@ -290,7 +283,7 @@ function NuevoProyecto() {
                                     onChange={(e) => setDireccionCliente(e.target.value)}
                                     onBlur={blurDireccion}
                                     placeholder="Calle, número, comuna"
-                                    maxLength={150}
+                                    maxLength={200}
                                 />
                                 {errDireccion && (
                                     <div className="invalid-feedback">{errDireccion}</div>
@@ -334,7 +327,7 @@ function NuevoProyecto() {
                                     onChange={(e) => setNombreProyecto(e.target.value)}
                                     onBlur={blurNombreProyecto}
                                     placeholder="Se autocompleta desde la plantilla"
-                                    maxLength={50}
+                                    maxLength={100}
                                 />
                                 {errNombreProyecto && (
                                     <div className="invalid-feedback">{errNombreProyecto}</div>

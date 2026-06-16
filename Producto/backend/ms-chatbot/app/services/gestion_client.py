@@ -74,6 +74,21 @@ def _url(path: str) -> str:
     return f"{base.rstrip('/')}{path}"
 
 
+def obtener_categorias_con_plantillas() -> List[Dict[str, Any]]:
+    """Devuelve categorías activas que tienen al menos 1 plantilla activa."""
+    try:
+        r = httpx.get(
+            _url("/categoria-plantilla/?solo_con_plantillas=true"),
+            headers=_headers(),
+            timeout=5,
+        )
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        print(f"[GESTION] obtener_categorias_con_plantillas error: {e}")
+        return []
+
+
 def obtener_plantillas() -> List[Dict[str, Any]]:
     try:
         r = httpx.get(_url("/plantillas/"), headers=_headers(), timeout=5)

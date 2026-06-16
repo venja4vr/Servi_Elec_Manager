@@ -403,6 +403,19 @@ export async function recalcularCostosProyecto(proyectoId) {
     });
 }
 
+// =============== CATEGORÍAS DE PLANTILLA ===============
+
+export async function getCategoriasPlantilla() {
+    return fetchAPI("/categoria-plantilla/");
+}
+
+export async function crearCategoriaPlantilla(data) {
+    return fetchAPI("/categoria-plantilla/", {
+        method: "POST",
+        body: JSON.stringify(data),
+    });
+}
+
 // =============== NOTIFICACIONES ===============
 
 export async function getNotificaciones(soloNoLeidas = false) {

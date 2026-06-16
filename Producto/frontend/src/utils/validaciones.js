@@ -94,3 +94,35 @@ export function validarSeleccion(valor, etiqueta = "Este campo") {
     if (!valor) return `Debes seleccionar ${etiqueta.toLowerCase()}`;
     return "";
 }
+
+// =============== PRESUPUESTO OPCIONAL (> 0 si se proporciona) ===============
+export function validarPresupuestoOpcional(valor, { etiqueta = "El presupuesto" } = {}) {
+    if (valor === "" || valor === null || valor === undefined) return "";
+    const n = Number(valor);
+    if (Number.isNaN(n)) return `${etiqueta} debe ser un número válido`;
+    if (n < 0) return `${etiqueta} no puede ser negativo`;
+    if (n === 0) return `${etiqueta} debe ser mayor a 0`;
+    return "";
+}
+
+// =============== FECHA: no anterior a hoy ===============
+export function validarFechaNoAnteriorHoy(valor) {
+    if (!valor) return "";
+    const [y, m, d] = valor.split("-").map(Number);
+    const fecha = new Date(y, m - 1, d);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    if (fecha < hoy) return "La fecha no puede ser anterior a hoy";
+    return "";
+}
+
+// =============== FECHA TÉRMINO posterior a fecha inicio ===============
+export function validarFechaTermino(inicio, termino) {
+    if (!inicio || !termino) return "";
+    const [yi, mi, di] = inicio.split("-").map(Number);
+    const [yt, mt, dt] = termino.split("-").map(Number);
+    const fInicio = new Date(yi, mi - 1, di);
+    const fTermino = new Date(yt, mt - 1, dt);
+    if (fTermino < fInicio) return "La fecha de término debe ser posterior a la fecha de inicio";
+    return "";
+}

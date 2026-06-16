@@ -45,7 +45,7 @@ function AgregarProducto() {
         }
     };
 
-    const validarCampoNombre = (v) => validarTexto(v, { minimo: 3, maximo: 50, etiqueta: "El nombre" });
+    const validarCampoNombre = (v) => validarTexto(v, { minimo: 3, maximo: 100, etiqueta: "El nombre" });
     const validarCampoDescripcion = (v) => validarTextoOpcional(v, { maximo: 250, etiqueta: "La descripción" });
     const validarCampoStockActual = (v) => validarEnteroPositivo(v, { etiqueta: "El stock actual" });
     const validarCampoStockCritico = (v) => validarEnteroPositivo(v, { etiqueta: "El stock crítico" });
@@ -128,7 +128,7 @@ function AgregarProducto() {
                             <input
                                 type="text"
                                 placeholder="Ej: Interruptor Simple Bticino"
-                                maxLength={50}
+                                maxLength={100}
                                 value={nombre}
                                 onChange={(e) => setNombre(e.target.value)}
                                 onBlur={blurNombre}
