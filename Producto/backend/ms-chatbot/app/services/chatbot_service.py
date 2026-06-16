@@ -1,8 +1,8 @@
 import re
 from datetime import date, timedelta
-from typing import Tuple, List
+from typing import Optional, Tuple, List
 from app.models.sesion import SesionChat, EstadoChat
-from app.services import sesion_service, gestion_client, whatsapp_service
+from app.services import sesion_service, gestion_client, whatsapp_service, groq_service
 
 
 # Caché de categorías dinámicas (se carga desde ms-gestion al primer uso)
@@ -184,6 +184,133 @@ def _parsear_fecha(texto: str) -> tuple:
                 return (None, _FECHA_ERROR_MSG)
 
     return (None, _FECHA_ERROR_MSG)
+
+
+# ── Hooks de IA (red de seguridad Groq) ──────────────────────
+
+def _hook_coherencia(sesion: SesionChat, texto: str) -> Optional[str]:
+    """
+    Hook 1: si la validación de un campo numérico falla y el texto parece lenguaje libre,
+    consulta IA para detectar emergencias, confusiones u hostilidad y responder con empatía.
+    Retorna mensaje de respuesta o None si IA no sugiere nada relevante.
+    """
+    try:
+        _, pregunta = PREGUNTAS_FICHA[sesion.paso_recopilacion]
+        contexto = f"Servicio solicitado: {sesion.nombre_servicio or 'no seleccionado'}"
+        resultado = groq_service.analizar_coherencia(pregunta, texto, contexto)
+        if (
+            not resultado.get("coherente")
+            and resultado.get("tipo_problema")
+            and resultado.get("confianza", 0) >= 0.7
+            and resultado.get("sugerencia_respuesta")
+        ):
+            return (
+                f"{resultado['sugerencia_respuesta']}\n\n"
+                f"{pregunta}\n\n"
+                "---\n"
+                "Escribe *volver* para la pregunta anterior\n"
+                "Escribe *menú* para cancelar y volver al inicio"
+            )
+    except Exception:
+        pass
+    return None
+
+
+def _hook_clasificar_intencion(sesion: SesionChat, texto: str, cats: dict) -> Optional[str]:
+    """
+    Hook 2: si el cliente escribe texto libre (≥4 palabras) en el menú de categorías,
+    la IA intenta clasificar su intención y selecciona la categoría automáticamente
+    si la confianza supera 0.8.
+    Retorna el menú de servicios de la categoría detectada, o None.
+    """
+    try:
+        resultado = groq_service.clasificar_intencion(texto)
+        cat_sugerida = resultado.get("categoria_sugerida")
+        if not cat_sugerida or resultado.get("confianza", 0) < 0.8:
+            return None
+
+        for _, nombre in cats.items():
+            if nombre.lower() == cat_sugerida.lower():
+                plantillas = gestion_client.obtener_plantillas_por_categoria(nombre)
+                if not plantillas:
+                    return None
+                texto_menu, mapa = _menu_servicios(plantillas, nombre)
+                sesion.categoria_elegida = nombre
+                sesion.mapa_servicios = mapa
+                sesion.estado = EstadoChat.ESPERANDO_SERVICIO
+                sesion_service.guardar_sesion(sesion)
+                palabras = resultado.get("palabras_clave", [])
+                descripcion = ", ".join(palabras[:3]) if palabras else texto[:40]
+                return f"🤖 Entendí que buscas: _{descripcion}_\n\n{texto_menu}"
+    except Exception:
+        pass
+    return None
+
+
+def _hook_extraer_datos(sesion: SesionChat, texto: str) -> Optional[str]:
+    """
+    Hook 3: si el cliente envía un mensaje largo (>50 chars) en los primeros pasos,
+    la IA intenta extraer múltiples campos a la vez y avanza la sesión.
+    Solo activa si extrae ≥2 campos válidos. Retorna siguiente pregunta o None.
+    """
+    try:
+        datos = groq_service.extraer_datos_libres(texto)
+
+        MAPA = [
+            ("nombre_cliente",  "nombre"),
+            ("direccion",       "direccion"),
+            ("comuna",          "comuna"),
+            ("fecha_preferida", "fecha_preferida"),
+        ]
+
+        extraidos = 0
+        max_paso_lleno = sesion.paso_recopilacion - 1
+
+        for campo_sesion, campo_groq in MAPA:
+            valor = datos.get(campo_groq)
+            if not valor:
+                continue
+            paso_campo = next(
+                (i for i, (c, _) in enumerate(PREGUNTAS_FICHA) if c == campo_sesion),
+                None,
+            )
+            if paso_campo is None or paso_campo < sesion.paso_recopilacion:
+                continue
+
+            if campo_sesion == "comuna":
+                valor_lower = valor.strip().lower()
+                if valor_lower not in COMUNAS_QUINTA_REGION:
+                    continue
+                valor = valor.strip().title()
+                grupo = gestion_client.obtener_comuna_grupo_por_nombre(valor_lower)
+                sesion.comuna_grupo_id = grupo.get("id_cg") if grupo else None
+
+            setattr(sesion, campo_sesion, valor)
+            if paso_campo > max_paso_lleno:
+                max_paso_lleno = paso_campo
+            extraidos += 1
+
+        if extraidos < 2:
+            return None
+
+        sesion.paso_recopilacion = max_paso_lleno + 1
+
+        if sesion.paso_recopilacion >= len(PREGUNTAS_FICHA):
+            sesion_service.guardar_sesion(sesion)
+            return _crear_proyecto(sesion)
+
+        _, siguiente = PREGUNTAS_FICHA[sesion.paso_recopilacion]
+        sesion_service.guardar_sesion(sesion)
+        return (
+            f"🤖 Capturé {extraidos} datos de tu mensaje. Continuamos:\n\n"
+            f"{siguiente}\n\n"
+            "---\n"
+            "Escribe *volver* para la pregunta anterior\n"
+            "Escribe *menú* para cancelar y volver al inicio"
+        )
+    except Exception:
+        pass
+    return None
 
 
 # ── Textos del bot ────────────────────────────────────────────
@@ -436,6 +563,11 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
         cat = cats.get(texto_limpio)
         n = len(cats)
         if not cat:
+            # Hook 2: texto libre con ≥4 palabras → clasificar intención con IA
+            if len(texto.strip().split()) >= 4:
+                respuesta_ia = _hook_clasificar_intencion(sesion, texto, cats)
+                if respuesta_ia:
+                    return respuesta_ia
             opciones = f"1 al {n}" if n > 1 else "1"
             return f"Por favor escribe un número del {opciones}.\n\n{_menu_categorias()}"
 
@@ -566,6 +698,12 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
     if estado == EstadoChat.RECOPILANDO_DATOS:
         campo, _ = PREGUNTAS_FICHA[sesion.paso_recopilacion]
 
+        # Hook 3: mensaje largo en pasos iniciales → intentar extraer múltiples campos
+        if len(texto.strip()) > 50 and sesion.paso_recopilacion < 4:
+            respuesta_ia = _hook_extraer_datos(sesion, texto)
+            if respuesta_ia:
+                return respuesta_ia
+
         # Validación especial para la comuna
         if campo == "comuna":
             texto_lower = texto.strip().lower()
@@ -591,6 +729,11 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
                 if not (1 <= dias_val <= 30):
                     raise ValueError()
             except (ValueError, TypeError):
+                # Hook 1: texto con letras → verificar coherencia con IA
+                if re.search(r"[a-zA-ZáéíóúñÁÉÍÓÚÑ]", texto):
+                    respuesta_ia = _hook_coherencia(sesion, texto)
+                    if respuesta_ia:
+                        return respuesta_ia
                 return (
                     "Por favor escribe un número entre 1 y 30.\n\n"
                     "---\n"
@@ -619,6 +762,11 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
                 if not (1 <= horas_val <= 12):
                     raise ValueError()
             except (ValueError, TypeError):
+                # Hook 1: texto con letras → verificar coherencia con IA
+                if re.search(r"[a-zA-ZáéíóúñÁÉÍÓÚÑ]", texto):
+                    respuesta_ia = _hook_coherencia(sesion, texto)
+                    if respuesta_ia:
+                        return respuesta_ia
                 return (
                     "Por favor escribe un número entre 1 y 12.\n\n"
                     "---\n"
