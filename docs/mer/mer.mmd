@@ -1,0 +1,158 @@
+---
+title: Servi Elec Manager — MER (migraciones 01-24, 2026-06-16)
+---
+erDiagram
+
+    %% ── USUARIOS ────────────────────────────────────────────────
+
+    USUARIO {
+        varchar15  id_usuario     PK "UUID hex truncado"
+        varchar50  nombre_usuario
+        varchar40  correo         UK
+        varchar255 password_hash
+        char1      rol               "S=SuperAdmin A=Admin"
+        varchar20  estado            "pendiente | aprobado"
+    }
+
+    %% ── INVENTARIO ──────────────────────────────────────────────
+
+    CATEGORIA {
+        varchar20 id_categoria     PK
+        varchar50 nombre_categoria UK
+    }
+
+    MATERIAL {
+        varchar20   id_material                PK
+        varchar50   nombre_material
+        varchar250  descripcion
+        integer     stock_actual                  "DEFAULT 0"
+        integer     stock_critico                 "Umbral de alerta"
+        numeric92   precio_unitario               "DEFAULT 0"
+        varchar20   categoria_id               FK
+        numeric122  precio_sodimac_actual
+        timestamp   precio_sodimac_actualizado
+        varchar20   unidad_compra                 "unidad|metro|rollo|kilo|litro"
+    }
+
+    MATERIAL_PRECIO_HISTORICO {
+        varchar32   id_pmh      PK
+        varchar20   material_id FK
+        numeric122  precio
+        varchar20   fuente         "sodimac | manual"
+        varchar20   tienda         "Sodimac | Easy"
+        boolean     es_outlier     "DEFAULT false"
+        timestamp   fecha
+    }
+
+    MOVIMIENTO {
+        varchar100 id_movimiento PK
+        integer    cantidad         "CHECK > 0"
+        timestamp  fecha_salida     "DEFAULT NOW()"
+        varchar20  proyecto_id   FK
+        varchar20  material_id   FK
+        varchar15  usuario_id    FK
+    }
+
+    %% ── PLANTILLAS ──────────────────────────────────────────────
+
+    CATEGORIA_PLANTILLA {
+        varchar32 id_categoria   PK  "Ej: cat_instalaciones"
+        varchar80 nombre         UK
+        boolean   activa             "DEFAULT true"
+        timestamp fecha_creacion
+    }
+
+    PLANTILLA {
+        varchar20  id_plantilla          PK
+        varchar60  nombre_servicio       UK
+        varchar200 descripcion
+        text       materiales_sugeridos     "Legado — ver PLANTILLA_MATERIAL"
+        numeric92  precio_estimado
+        varchar40  categoria                "Nombre libre (match con CATEGORIA_PLANTILLA)"
+        boolean    activa                   "DEFAULT true"
+        integer    dias_default
+        integer    horas_diarias_default    "DEFAULT 8"
+        integer    trabajadores_default
+        integer    dias_minimos             "Min aceptado por bot"
+        integer    horas_minimas            "Min aceptado por bot"
+    }
+
+    PLANTILLA_MATERIAL {
+        varchar20   plantilla_id      PK "FK"
+        varchar20   material_id       PK "FK"
+        numeric92   cantidad_sugerida    "CHECK > 0"
+        varchar15   unidad
+    }
+
+    %% ── PROYECTOS ───────────────────────────────────────────────
+
+    COMUNA_GRUPO {
+        varchar32 id_cg         PK  "Ej: zona_01_local"
+        varchar80 nombre
+        text      descripcion
+        integer   rango_km_min
+        integer   rango_km_max
+        integer   precio_por_km   "$105 CLP/km"
+    }
+
+    PROYECTO {
+        varchar20   id_proyecto           PK
+        varchar50   nombre_proyecto
+        varchar25   tipo_proyecto
+        varchar50   nombre_cliente
+        varchar20   telefono_cliente
+        varchar150  direccion_cliente
+        date        fecha_inicio             "DEFAULT CURRENT_DATE"
+        varchar10   estado                   "pendiente|en_curso|finalizado|cancelado"
+        numeric92   presupuesto_estimado
+        numeric92   presupuesto_final
+        date        fecha_termino_maximo
+        varchar20   plantilla_id          FK
+        varchar500  observaciones
+        integer     dias_estimados           "DEFAULT 1"
+        integer     cantidad_trabajadores    "DEFAULT 1"
+        integer     horas_diarias            "DEFAULT 8"
+        varchar32   comuna_grupo_id       FK
+        numeric52   porcentaje_ganancia      "DEFAULT 15.00"
+        numeric102  precio_dia_trabajador    "DEFAULT 60000"
+    }
+
+    PROYECTO_MATERIAL {
+        varchar32   id_pm                   PK  "UUID hex"
+        varchar20   proyecto_id             FK
+        varchar20   material_id             FK  "NULL si externo nuevo"
+        numeric92   cantidad_planeada           "CHECK > 0"
+        boolean     externo                     "DEFAULT false"
+        varchar200  nombre_material_externo     "Solo si externo y sin material_id"
+        numeric122  precio_unitario_externo
+    }
+
+    %% ── NOTIFICACIONES ──────────────────────────────────────────
+
+    NOTIFICACION {
+        varchar15  id_notificacion PK
+        varchar15  usuario_id      FK
+        varchar50  tipo               "Ej: stock_bajo"
+        varchar200 titulo
+        text       mensaje
+        boolean    leida              "DEFAULT false"
+        timestamp  creada_en          "DEFAULT NOW()"
+    }
+
+    %% ── RELACIONES ──────────────────────────────────────────────
+
+    CATEGORIA           ||--o{ MATERIAL                 : "clasifica"
+    MATERIAL            ||--o{ MATERIAL_PRECIO_HISTORICO : "tiene historial"
+    MATERIAL            ||--o{ MOVIMIENTO               : "registra movimientos"
+    MATERIAL            ||--o{ PLANTILLA_MATERIAL        : "aparece en"
+    MATERIAL            |o--o{ PROYECTO_MATERIAL         : "planeado en"
+
+    PLANTILLA           ||--o{ PLANTILLA_MATERIAL        : "requiere materiales"
+    PLANTILLA           |o--o{ PROYECTO                  : "origina"
+
+    PROYECTO            ||--o{ PROYECTO_MATERIAL         : "planifica materiales"
+    PROYECTO            ||--o{ MOVIMIENTO               : "genera movimientos"
+    PROYECTO            }o--|| COMUNA_GRUPO              : "pertenece a zona"
+
+    USUARIO             ||--o{ MOVIMIENTO               : "ejecuta"
+    USUARIO             ||--o{ NOTIFICACION             : "recibe"
