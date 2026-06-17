@@ -15,12 +15,12 @@ def listar(
     db: Session = Depends(get_db),
     usuario=Depends(get_current_user),
 ):
-    return notificacion_service.listar_notificaciones(db, usuario["sub"], solo_no_leidas)
+    return notificacion_service.listar_notificaciones(db, usuario["id_usuario"], solo_no_leidas)
 
 
 @router.get("/contador")
 def contador(db: Session = Depends(get_db), usuario=Depends(get_current_user)):
-    total = notificacion_service.contador_no_leidas(db, usuario["sub"])
+    total = notificacion_service.contador_no_leidas(db, usuario["id_usuario"])
     return {"total": total}
 
 
@@ -30,10 +30,10 @@ def marcar_leida(
     db: Session = Depends(get_db),
     usuario=Depends(get_current_user),
 ):
-    return notificacion_service.marcar_leida(db, notificacion_id, usuario["sub"])
+    return notificacion_service.marcar_leida(db, notificacion_id, usuario["id_usuario"])
 
 
 @router.patch("/marcar-todas-leidas")
 def marcar_todas(db: Session = Depends(get_db), usuario=Depends(get_current_user)):
-    actualizadas = notificacion_service.marcar_todas_leidas(db, usuario["sub"])
+    actualizadas = notificacion_service.marcar_todas_leidas(db, usuario["id_usuario"])
     return {"actualizadas": actualizadas}
