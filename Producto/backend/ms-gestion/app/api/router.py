@@ -7,6 +7,10 @@ from app.api.routes.proyectos import router as proyectos_router
 from app.api.routes.movimientos import router as movimientos_router
 from app.api.routes.usuarios import router as usuarios_router
 from app.api.routes.auth import router as auth_router
+from app.api.routes.comparador import router as comparador_router
+from app.api.routes.comuna_grupos import router as comuna_grupos_router
+from app.api.routes.notificaciones import router as notificaciones_router
+from app.api.routes.categoria_plantilla import router as categoria_plantilla_router
 
 api_router = APIRouter()
 
@@ -18,3 +22,7 @@ api_router.include_router(proyectos_router)
 api_router.include_router(movimientos_router)
 api_router.include_router(usuarios_router)
 api_router.include_router(auth_router)
+api_router.include_router(comparador_router)
+api_router.include_router(comuna_grupos_router)
+api_router.include_router(notificaciones_router)
+api_router.include_router(categoria_plantilla_router)

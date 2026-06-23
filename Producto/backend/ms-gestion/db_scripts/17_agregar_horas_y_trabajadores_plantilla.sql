@@ -1,0 +1,5 @@
+BEGIN;
+ALTER TABLE plantilla
+  ADD COLUMN IF NOT EXISTS horas_diarias_default INTEGER DEFAULT 8,
+  ADD COLUMN IF NOT EXISTS trabajadores_default INTEGER DEFAULT 1;
+COMMIT;

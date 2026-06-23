@@ -12,11 +12,30 @@ def crear_usuario(db: Session, data: UsuarioCreate):
         nombre_usuario=data.nombre_usuario,
         correo=data.correo,
         password_hash=hash_password(data.password),
-        rol=data.rol,
+        rol="A",
+        estado="pendiente",
     )
     db.add(usuario)
     db.commit()
     db.refresh(usuario)
+
+    try:
+        from app.services.notificacion_service import crear_notificacion
+        from app.schemas.notificacion import NotificacionCreate
+        superadmins = db.query(Usuario).filter(Usuario.rol == "S").all()
+        for sa in superadmins:
+            crear_notificacion(db, NotificacionCreate(
+                usuario_id=sa.id_usuario,
+                tipo="nueva_solicitud_usuario",
+                titulo="Nueva solicitud de cuenta",
+                mensaje=f"{data.nombre_usuario} solicita acceso al sistema.",
+            ))
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
     return usuario
 
 
@@ -26,6 +45,11 @@ def login(db: Session, data: LoginRequest):
         raise HTTPException(
             status_code=401,
             detail="Correo o contraseña incorrectos"
+        )
+    if usuario.estado == "pendiente":
+        raise HTTPException(
+            status_code=403,
+            detail="Tu cuenta está pendiente de aprobación por el administrador"
         )
     token = create_access_token({
         "sub": usuario.id_usuario,
@@ -42,3 +66,45 @@ def login(db: Session, data: LoginRequest):
 
 def listar_usuarios(db: Session):
     return db.query(Usuario).all()
+
+
+def listar_usuarios_pendientes(db: Session):
+    return db.query(Usuario).filter(Usuario.estado == "pendiente").all()
+
+def listar_usuarios_activos(db: Session):
+    return db.query(Usuario).filter(Usuario.estado == "aprobado").all()
+
+
+def aprobar_usuario(db: Session, usuario_id: str):
+    usuario = db.query(Usuario).filter(Usuario.id_usuario == usuario_id).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if usuario.estado == "aprobado":
+        raise HTTPException(status_code=400, detail="El usuario ya está aprobado")
+    usuario.estado = "aprobado"
+    db.commit()
+    db.refresh(usuario)
+    return usuario
+
+
+def rechazar_usuario(db: Session, usuario_id: str):
+    usuario = db.query(Usuario).filter(Usuario.id_usuario == usuario_id).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if usuario.rol == "S":
+        raise HTTPException(status_code=400, detail="No se puede eliminar a un SuperAdmin")
+    nombre = usuario.nombre_usuario
+    db.delete(usuario)
+    db.commit()
+    return {"mensaje": f"Usuario {nombre} eliminado correctamente"}
+
+
+def verify_password_for_user(db: Session, usuario_id: str, password: str) -> bool:
+    """
+    Verifica que la contraseña coincida con la del usuario indicado.
+    Usado para confirmar acciones críticas (eliminar, cambiar estado, etc.)
+    """
+    usuario = db.query(Usuario).filter(Usuario.id_usuario == usuario_id).first()
+    if not usuario:
+        return False
+    return verify_password(password, usuario.password_hash)
