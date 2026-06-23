@@ -148,9 +148,11 @@ function RecursosPendientes() {
                 setMostrarModal(true);
             }
         } catch (err) {
+            const msg = err.message || "";
             setError(
-                "Error al actualizar inventario: " +
-                    err.message
+                msg === "Failed to fetch" || msg === "Sesión expirada"
+                    ? "No se pudo conectar con el servidor. Verifica tu conexión e intenta de nuevo."
+                    : "Error al actualizar inventario: " + msg
             );
         }
     };
@@ -165,19 +167,13 @@ function RecursosPendientes() {
         }
 
         try {
+            const descripcion = `Marca: ${itemAComprar.marca}. Comprado en ${itemAComprar.tienda}.`;
             await crearMaterial({
-                nombre_material: itemAComprar.nombre,
-
-                descripcion: `Marca: ${itemAComprar.marca}. Comprado en ${itemAComprar.tienda}.`,
-
+                nombre_material: (itemAComprar.nombre || "").substring(0, 50),
+                descripcion: descripcion.substring(0, 250),
                 stock_actual: itemAComprar.cantidad,
-
-                stock_critico: Number(
-                    stockCriticoNuevo
-                ),
-
-                precio_unitario: itemAComprar.precio,
-
+                stock_critico: Number(stockCriticoNuevo),
+                precio_unitario: itemAComprar.precio || 0,
                 categoria_id: categoriaNuevo,
             });
 
@@ -191,9 +187,13 @@ function RecursosPendientes() {
 
             await cargarDatosInventario();
         } catch (err) {
+            const msg = err.message || "";
             setError(
-                "Error al crear material: " +
-                    err.message
+                msg === "Failed to fetch"
+                    ? "No se pudo conectar con el servidor. Verifica tu conexión e intenta de nuevo."
+                    : msg === "Ya existe un material con ese nombre o configuración"
+                    ? "No se pudo agregar: ya existe un material con ese nombre en el inventario."
+                    : "Error al crear material: " + (msg || "Error desconocido")
             );
         }
     };

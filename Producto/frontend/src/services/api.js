@@ -31,12 +31,18 @@ export async function fetchAPI(endpoint, options = {}) {
                 localStorage.removeItem("usuario_rol");
                 localStorage.removeItem("usuario_id");
                 window.location.href = "/login?expired=1";
-                return;
+                throw new Error("Sesión expirada");
             }
         }
 
         const error = await response.json().catch(() => ({ detail: "Error desconocido" }));
         const detail = error.detail;
+
+        // Errores de validación Pydantic: detail es un array [{loc, msg, type}, ...]
+        if (Array.isArray(detail)) {
+            const msgs = detail.map(e => e.msg).filter(Boolean).join("; ");
+            throw new Error(msgs || `Error de validación (${response.status})`);
+        }
 
         if (typeof detail === "object" && detail !== null) {
             const err = new Error(detail.mensaje || detail.resumen || "Error en la operación");
@@ -45,7 +51,7 @@ export async function fetchAPI(endpoint, options = {}) {
             throw err;
         }
 
-        throw new Error(detail || `Error ${response.status}`);
+        throw new Error(typeof detail === "string" ? detail : `Error ${response.status}`);
     }
 
     return response.json();

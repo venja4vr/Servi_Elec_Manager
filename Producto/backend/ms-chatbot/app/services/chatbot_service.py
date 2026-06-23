@@ -201,7 +201,7 @@ def _hook_coherencia(sesion: SesionChat, texto: str) -> Optional[str]:
         if (
             not resultado.get("coherente")
             and resultado.get("tipo_problema")
-            and resultado.get("confianza", 0) >= 0.7
+            and resultado.get("confianza", 0) >= 0.5
             and resultado.get("sugerencia_respuesta")
         ):
             return (
@@ -211,6 +211,60 @@ def _hook_coherencia(sesion: SesionChat, texto: str) -> Optional[str]:
                 "Escribe *volver* para la pregunta anterior\n"
                 "Escribe *menú* para cancelar y volver al inicio"
             )
+    except Exception:
+        pass
+    return None
+
+
+def _hook_menu_principal(sesion: SesionChat, texto: str) -> Optional[str]:
+    """
+    Hook para el menú principal: si el cliente escribe texto libre con más de 1 palabra,
+    clasifica su intención y responde de forma empática sin requerir que escriba 1/2/3.
+    """
+    try:
+        resultado = groq_service.clasificar_intencion(texto)
+        confianza = resultado.get("confianza", 0)
+        if confianza < 0.6:
+            return None
+
+        intencion_menu = resultado.get("intencion_menu")
+        mensaje_empatico = resultado.get("mensaje_empatico") or ""
+
+        if intencion_menu == "cotizacion" and confianza >= 0.7:
+            sesion.estado = EstadoChat.ESPERANDO_CATEGORIA
+            sesion_service.guardar_sesion(sesion)
+            saludo = mensaje_empatico or "Entendido, con gusto te ayudo con tu cotización. 😊"
+            return f"🤖 {saludo}\n\n{_menu_categorias()}"
+
+        if intencion_menu == "reunion" and confianza >= 0.7:
+            saludo = mensaje_empatico or "Claro, me alegra que quieras contactarnos."
+            return (
+                f"🤖 {saludo}\n\n"
+                "📅 *Agendar reunión*\n\n"
+                "Contáctanos directamente:\n\n"
+                "📞 +56 9 XXXX XXXX\n"
+                "📧 contacto@servielec.cl\n\n"
+                "_Escribe *menú* para volver._"
+            )
+
+        if intencion_menu == "info_empresa" and confianza >= 0.7:
+            saludo = mensaje_empatico or "¡Gracias por tu interés en Servi Elec!"
+            return (
+                f"🤖 {saludo}\n\n"
+                "🏢 *Sobre Servi Elec*\n\n"
+                "Empresa de instalaciones eléctricas con más de 10 años "
+                "de experiencia en el sector residencial e industrial.\n\n"
+                "Trabajamos bajo la normativa RIC vigente.\n\n"
+                "_Escribe *menú* para volver._"
+            )
+
+        # Categoría de servicio detectada en el menú principal
+        cat_sugerida = resultado.get("categoria_sugerida")
+        if cat_sugerida and confianza >= 0.7:
+            saludo = mensaje_empatico or f"Parece que buscas servicios de _{cat_sugerida}_."
+            sesion.estado = EstadoChat.ESPERANDO_CATEGORIA
+            sesion_service.guardar_sesion(sesion)
+            return f"🤖 {saludo}\n\n{_menu_categorias()}"
     except Exception:
         pass
     return None
@@ -488,12 +542,12 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
     if texto_limpio == "hola":
         if estado == EstadoChat.RECOPILANDO_DATOS:
             _, pregunta_actual = PREGUNTAS_FICHA[sesion.paso_recopilacion]
-            return f"¡Sigo aquí! Estábamos en esta pregunta:\n\n{pregunta_actual}"
+            return f"¡Hola! Aquí sigo 😊 Continuemos con tu solicitud:\n\n{pregunta_actual}"
         if estado == EstadoChat.FINALIZADO:
             sesion_service.reiniciar_sesion(telefono)
-            return "¡Bienvenido nuevamente a Servi Elec! 👋\n\n" + _menu_principal()
+            return "¡Hola de nuevo! 👋 Es un gusto atenderte otra vez en Servi Elec.\n\n" + _menu_principal()
         sesion_service.reiniciar_sesion(telefono)
-        return _menu_principal()
+        return "¡Hola! 👋 Es un gusto saludarte. ¿En qué puedo ayudarte hoy?\n\n" + _menu_principal()
 
     # Reinicio explícito (menú, cancelar, salir, etc.) desde cualquier estado
     if texto_limpio in PALABRAS_REINICIO:
@@ -555,7 +609,16 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
                 "_Escribe *menú* para volver._"
             )
 
-        return "No entendí tu respuesta.\n\n" + _menu_principal()
+        # Hook menú: texto libre con más de 1 palabra → clasificar intención con IA
+        if len(texto.strip().split()) > 1:
+            respuesta_ia = _hook_menu_principal(sesion, texto)
+            if respuesta_ia:
+                return respuesta_ia
+
+        return (
+            "Disculpa, no logré entender tu mensaje. 😊\n\n"
+            "Te muestro las opciones de nuevo:\n\n" + _menu_principal()
+        )
 
     # ── Selección de categoría ───────────────────────────────
     if estado == EstadoChat.ESPERANDO_CATEGORIA:
@@ -704,8 +767,56 @@ def procesar_mensaje(telefono: str, texto: str) -> str:
             if respuesta_ia:
                 return respuesta_ia
 
+        # Validación contextual para nombre_cliente
+        if campo == "nombre_cliente":
+            texto_stripped = texto.strip()
+            palabras = texto_stripped.split()
+            FRASES_NO_NOMBRE = {
+                "necesito", "ayuda", "hola", "no", "si", "sí", "ok", "help",
+                "quiero", "tengo", "hay", "me", "mi", "necesitas", "puede",
+                "urgente", "por", "favor", "gracias",
+            }
+            tiene_numero = any(c.isdigit() for c in texto_stripped)
+            es_muy_corto = len(palabras) < 2
+            parece_frase = palabras[0].lower() in FRASES_NO_NOMBRE if palabras else True
+            if tiene_numero or parece_frase or es_muy_corto:
+                respuesta_ia = _hook_coherencia(sesion, texto_stripped)
+                if respuesta_ia:
+                    return respuesta_ia
+                _, pregunta = PREGUNTAS_FICHA[sesion.paso_recopilacion]
+                return (
+                    "Disculpa, no logré identificar tu nombre. 😊 "
+                    "Necesito tu nombre completo (nombre y apellido). "
+                    "Por ejemplo: *Juan Pérez*\n\n"
+                    f"{pregunta}\n\n"
+                    "---\n"
+                    "Escribe *volver* para la pregunta anterior\n"
+                    "Escribe *menú* para cancelar y volver al inicio"
+                )
+            setattr(sesion, campo, texto_stripped)
+
+        # Validación contextual para dirección
+        elif campo == "direccion":
+            texto_stripped = texto.strip()
+            tiene_numero = any(c.isdigit() for c in texto_stripped)
+            palabras_dir = texto_stripped.split()
+            if not tiene_numero or len(palabras_dir) < 2:
+                respuesta_ia = _hook_coherencia(sesion, texto_stripped)
+                if respuesta_ia:
+                    return respuesta_ia
+                _, pregunta = PREGUNTAS_FICHA[sesion.paso_recopilacion]
+                return (
+                    "Entiendo, necesito la dirección completa con calle y número. 😊 "
+                    "Por ejemplo: *Av. Argentina 1234*\n\n"
+                    f"{pregunta}\n\n"
+                    "---\n"
+                    "Escribe *volver* para la pregunta anterior\n"
+                    "Escribe *menú* para cancelar y volver al inicio"
+                )
+            setattr(sesion, campo, texto_stripped)
+
         # Validación especial para la comuna
-        if campo == "comuna":
+        elif campo == "comuna":
             texto_lower = texto.strip().lower()
             if texto_lower not in COMUNAS_QUINTA_REGION:
                 return (

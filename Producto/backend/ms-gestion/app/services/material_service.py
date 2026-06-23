@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException
 from app.models.material import Material
 from app.schemas.material import MaterialCreate, MaterialUpdate
@@ -16,11 +17,18 @@ def obtener_material(db: Session, material_id: str):
     return mat
 
 def crear_material(db: Session, data: MaterialCreate):
-    mat = Material(**data.model_dump())
-    db.add(mat)
-    db.commit()
-    db.refresh(mat)
-    return mat
+    try:
+        mat = Material(**data.model_dump())
+        db.add(mat)
+        db.commit()
+        db.refresh(mat)
+        return mat
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Ya existe un material con ese nombre o configuración")
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Error al guardar el material en la base de datos")
 
 def actualizar_material(db: Session, material_id: str, data: MaterialUpdate):
     mat = obtener_material(db, material_id)

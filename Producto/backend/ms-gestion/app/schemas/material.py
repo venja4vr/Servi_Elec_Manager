@@ -8,8 +8,8 @@ UNIDADES_COMPRA_VALIDAS = ["unidad", "metro", "rollo", "kilo", "litro"]
 
 
 class MaterialCreate(BaseModel):
-    nombre_material: str = Field(..., min_length=3, max_length=100)
-    descripcion: Optional[str] = Field(default=None, max_length=500)
+    nombre_material: str = Field(..., min_length=3, max_length=50)
+    descripcion: Optional[str] = Field(default=None, max_length=250)
     stock_actual: int = Field(default=0, ge=0)
     stock_critico: int = Field(default=0, ge=0)
     precio_unitario: Decimal = Field(default=0, ge=0)

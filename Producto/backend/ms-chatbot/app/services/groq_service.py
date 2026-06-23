@@ -83,17 +83,32 @@ def analizar_coherencia(
         {
             "role": "system",
             "content": (
-                "Eres asistente de Servi Elec, empresa de servicios eléctricos en Chile. "
-                "Analiza si la respuesta del cliente es coherente con la pregunta del bot. "
+                "Eres el asistente virtual de Servi Elec, empresa de servicios eléctricos en Chile. "
+                "Tu objetivo es acompañar al cliente con calidez y cercanía, generando confianza para retenerlo.\n\n"
+                "Analiza si la respuesta del cliente es coherente con lo que el bot le preguntó. "
+                "Detecta confusión, hostilidad, emergencias o respuestas fuera de contexto.\n\n"
                 "Devuelve JSON con exactamente estos campos:\n"
-                "- coherente: boolean\n"
+                "- coherente: boolean (true si la respuesta tiene sentido para la pregunta)\n"
                 "- tipo_problema: null | 'emergencia' | 'confusion' | 'hostilidad' | 'fuera_contexto'\n"
-                "- sugerencia_respuesta: string con mensaje empático para redirigir al cliente "
-                "(solo si no es coherente; null si es coherente)\n"
+                "- sugerencia_respuesta: string con un mensaje CÁLIDO y EMPÁTICO para redirigir al cliente. "
+                "Usa 'tú', sé cercano, muestra comprensión genuina. Ejemplos de tono:\n"
+                "  * Confusión con nombre: 'Entiendo, a veces no es claro lo que se necesita. "
+                "Lo que necesito es tu nombre completo (nombre y apellido). ¿Me lo compartes?'\n"
+                "  * Confusión con dirección: 'Claro, entiendo. Necesito la calle y número donde "
+                "realizaremos el trabajo. Por ejemplo: Av. Argentina 1234. ¿Me lo indicas?'\n"
+                "  * Confusión con días/horas: 'Tranquilo/a, no te preocupes. Solo necesito que "
+                "me indiques un número aproximado. Por ejemplo: 3 días. ¿Cuántos estimas?'\n"
+                "  * Hostilidad: 'Entiendo tu frustración y lamento los inconvenientes. "
+                "Estoy aquí para ayudarte de la mejor forma posible. [redirigir con la pregunta]'\n"
+                "  * Emergencia eléctrica: 'Lamento que estés pasando por eso. Para emergencias "
+                "eléctricas urgentes, contacta al 131 (Bomberos) o al 800 220 520 (CGE). "
+                "Para un trabajo programado, con gusto te ayudo.'\n"
+                "  * Fuera de contexto: 'Entiendo que tienes dudas. Estoy aquí para ayudarte "
+                "con tu solicitud de servicio eléctrico. [repetir la pregunta de forma amable]'\n"
+                "Solo incluir sugerencia_respuesta si no es coherente; null si es coherente.\n"
                 "- confianza: número entre 0.0 y 1.0\n\n"
-                "Si el cliente describe una emergencia eléctrica, sugiere llamar al 131. "
-                "Si hay hostilidad, responde con empatía y calma. "
-                "Si está fuera de contexto, redirige amablemente."
+                "IMPORTANTE: Mantén siempre el tono profesional y cálido de Servi Elec. "
+                "Nunca respondas de forma fría o mecánica."
             ),
         },
         {
@@ -119,17 +134,19 @@ def analizar_coherencia(
 
 def clasificar_intencion(texto_libre: str) -> dict:
     """
-    Clasifica qué servicio eléctrico describe el cliente en lenguaje libre.
-    Consulta categorías y plantillas reales desde ms-gestion.
-    Retorna dict con: categoria_sugerida, palabras_clave, plantilla_sugerida_id,
-    plantilla_sugerida_nombre, confianza.
+    Clasifica la intención del cliente: opción del menú principal (cotización/reunión/info)
+    o un servicio eléctrico específico por categoría/plantilla.
+    Retorna dict con: intencion_menu, categoria_sugerida, palabras_clave,
+    plantilla_sugerida_id, plantilla_sugerida_nombre, confianza, mensaje_empatico.
     """
     FALLBACK = {
+        "intencion_menu": None,
         "categoria_sugerida": None,
         "palabras_clave": [],
         "plantilla_sugerida_id": None,
         "plantilla_sugerida_nombre": None,
         "confianza": 0.0,
+        "mensaje_empatico": None,
     }
     if not _GROQ_ENABLED:
         return FALLBACK
@@ -161,16 +178,29 @@ def clasificar_intencion(texto_libre: str) -> dict:
         {
             "role": "system",
             "content": (
-                "Eres asistente de Servi Elec, empresa de servicios eléctricos en Chile. "
-                "Clasifica qué servicio necesita el cliente según su mensaje.\n\n"
-                f"Categorías disponibles: {cat_nombres}\n"
-                f"Servicios disponibles: {[p['nombre'] for p in plant_info]}\n\n"
+                "Eres el asistente virtual de Servi Elec, empresa de servicios eléctricos en Chile. "
+                "Analiza el mensaje del cliente y determina su intención con empatía.\n\n"
+                "OPCIONES DEL MENÚ PRINCIPAL (intencion_menu):\n"
+                "- 'cotizacion': cliente quiere precio, presupuesto, cotización o hablar de un trabajo eléctrico\n"
+                "- 'reunion': cliente quiere hablar con alguien, agendar, contactar, llamar o atención personalizada\n"
+                "- 'info_empresa': cliente pregunta quiénes somos, dónde estamos, experiencia, confiabilidad\n\n"
+                f"CATEGORÍAS DE SERVICIO disponibles: {cat_nombres}\n"
+                f"SERVICIOS específicos: {[p['nombre'] for p in plant_info]}\n\n"
                 "Devuelve JSON con exactamente estos campos:\n"
-                "- categoria_sugerida: string (exactamente uno de los nombres de categoría) o null\n"
+                "- intencion_menu: 'cotizacion' | 'reunion' | 'info_empresa' | null. "
+                "Usar cuando la intención encaja con las opciones del menú.\n"
+                "- categoria_sugerida: string (exactamente uno de los nombres de categoría) o null. "
+                "Solo si el cliente describe un servicio eléctrico específico.\n"
                 "- palabras_clave: lista de strings con las palabras clave detectadas\n"
                 "- plantilla_sugerida_id: null (se calcula luego)\n"
                 "- plantilla_sugerida_nombre: string con el nombre del servicio más probable o null\n"
-                "- confianza: número entre 0.0 y 1.0"
+                "- confianza: número entre 0.0 y 1.0\n"
+                "- mensaje_empatico: string breve y CÁLIDO que confirme lo que detectaste "
+                "(ej: '¡Entendido! Parece que necesitas una cotización, con gusto te ayudo 😊'). "
+                "null si confianza < 0.6 o si no detectas intención clara.\n\n"
+                "REGLA: Si el mensaje encaja con intencion_menu, deja categoria_sugerida en null. "
+                "Si es un servicio específico, deja intencion_menu en null. "
+                "Si no está claro, pon confianza baja (< 0.5)."
             ),
         },
         {
@@ -184,6 +214,9 @@ def clasificar_intencion(texto_libre: str) -> dict:
         return FALLBACK
     try:
         resultado = json.loads(contenido)
+        # Asegurar que los campos nuevos existen (compatibilidad con respuestas antiguas cacheadas)
+        resultado.setdefault("intencion_menu", None)
+        resultado.setdefault("mensaje_empatico", None)
         # Resolver ID real de plantilla a partir del nombre sugerido
         nombre_sug = resultado.get("plantilla_sugerida_nombre", "")
         if nombre_sug:
